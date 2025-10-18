@@ -1,0 +1,12 @@
+module Api
+  module V1
+    module Admin
+      class BookingsController < ApplicationController
+        def index
+          bookings = Booking.all
+          render json: bookings
+        end
+      end
+    end
+  end
+end
