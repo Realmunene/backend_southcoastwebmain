@@ -44,11 +44,17 @@ puts "👑 Seeding admin users..."
 SUPER_ADMIN = 0
 ADMIN = 1
 
-# Ensure only one Super Admin exists
 super_admin_email = "southcoastoutdoors25@gmail.com"
-super_admin = Admin.find_by(role: SUPER_ADMIN)
 
-if super_admin.nil?
+# For Render: Clear any conflicting super admins first
+conflicting_admins = Admin.where(role: SUPER_ADMIN)
+if conflicting_admins.any?
+  puts "🔄 Removing #{conflicting_admins.count} conflicting super admin records..."
+  conflicting_admins.destroy_all
+end
+
+# Create super admin
+begin
   Admin.create!(
     email: super_admin_email,
     password: "Admin@123",
@@ -57,19 +63,34 @@ if super_admin.nil?
     name: "Super Admin"
   )
   puts "✅ Super Admin created: #{super_admin_email}"
-else
-  puts "ℹ️ Super Admin already exists (#{super_admin.email}). Skipping creation."
+rescue => e
+  puts "⚠️ Super Admin creation issue: #{e.message}"
+  # Try alternative approach if creation fails
+  admin = Admin.find_or_initialize_by(email: super_admin_email)
+  admin.attributes = {
+    password: "Admin@123",
+    password_confirmation: "Admin@123",
+    role: SUPER_ADMIN,
+    name: "Super Admin"
+  }
+  admin.save!
+  puts "✅ Super Admin updated: #{super_admin_email}"
 end
 
-# Optional: Create a backup admin if only the super_admin exists
-if Admin.count == 1
-  Admin.find_or_create_by!(email: "admin@example.com") do |admin|
-    admin.password = "Admin123!"
-    admin.password_confirmation = "Admin123!"
-    admin.name = "System Administrator"
-    admin.role = ADMIN
+# Create backup admin only if no other admins exist (excluding the super admin)
+if Admin.where(role: ADMIN).none?
+  begin
+    Admin.create!(
+      email: "admin@example.com",
+      password: "Admin123!",
+      password_confirmation: "Admin123!",
+      name: "System Administrator",
+      role: ADMIN
+    )
+    puts "✅ Backup Admin user created: admin@example.com"
+  rescue => e
+    puts "⚠️ Backup admin creation issue: #{e.message}"
   end
-  puts "✅ Backup Admin user created: admin@example.com / Admin123!"
 else
   puts "ℹ️ Additional admin(s) already exist. No backup admin created."
 end
