@@ -1,14 +1,12 @@
 class AddRoleAndNameToAdmins < ActiveRecord::Migration[7.0]
   def change
-    uadd_column :admins, :role, :integer, default: 0 unless column_exists?(:admins, :role)
+    # ✅ Add role column if it doesn't exist, default to super_admin (0)
+    add_column :admins, :role, :integer, default: 0 unless column_exists?(:admins, :role)
+
+    # ✅ Add name column if it doesn't exist
     add_column :admins, :name, :string unless column_exists?(:admins, :name)
-    end
 
-    unless column_exists?(:admins, :name)
-      add_column :admins, :name, :string
-    end
-
-    # ✅ Use plain SQL instead of loading the model to avoid enum error
+    # ✅ Initialize existing records without loading the model (avoids enum error)
     reversible do |dir|
       dir.up do
         execute <<-SQL.squish
