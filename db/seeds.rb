@@ -42,14 +42,14 @@ puts "👑 Seeding admin users..."
 
 # Ensure only one Super Admin exists
 super_admin_email = "southcoastoutdoors25@gmail.com"
-super_admin = Admin.find_by(role: :super_admin)
+super_admin = Admin.find_by(role: 0) # ✅ Use integer for enum: 0 = super_admin
 
 if super_admin.nil?
   Admin.create!(
     email: super_admin_email,
     password: "Admin@123",
     password_confirmation: "Admin@123",
-    role: :super_admin,
+    role: 0,           # ✅ integer value
     name: "Super Admin"
   )
   puts "✅ Super Admin created: #{super_admin_email}"
@@ -63,7 +63,7 @@ if Admin.count == 1
     admin.password = "Admin123!"
     admin.password_confirmation = "Admin123!"
     admin.name = "System Administrator"
-    admin.role = :admin
+    admin.role = 1     # ✅ integer value for admin
   end
   puts "✅ Backup Admin user created: admin@example.com / Admin123!"
 else
