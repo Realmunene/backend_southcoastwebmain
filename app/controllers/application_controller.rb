@@ -2,26 +2,23 @@
 class ApplicationController < ActionController::API
   before_action :set_default_format
 
-  ##########################
-  # Common JWT Methods
-  ##########################
-
-  # Encode JWT token with optional expiration (default 1 hour)
+  ##################################
+  # JWT ENCODING & DECODING
+  ##################################
   def encode_token(payload, exp = 1.hour.from_now.to_i)
     payload[:exp] = exp
+    # ✅ Ensure role is always present
+    payload[:role] ||= 'user'
     JWT.encode(payload, secret_key, 'HS256')
   end
 
-  # Get Authorization header
   def auth_header
-    # { Authorization: 'Bearer <token>' }
+    # Expected format: Authorization: Bearer <token>
     request.headers['Authorization']
   end
 
-  # Decode JWT token
   def decoded_token
     return nil unless auth_header
-
     token = auth_header.split(' ').last
     begin
       decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256')
@@ -31,34 +28,25 @@ class ApplicationController < ActionController::API
     end
   end
 
-  ##########################
-  # User Authentication
-  ##########################
-
-  def current_user
-    return @current_user if defined?(@current_user)
+  ##################################
+  # CURRENT ROLE HELPERS
+  ##################################
+  def current_role
     decoded = decoded_token
-    if decoded && decoded['user_id']
-      @current_user = User.find_by(id: decoded['user_id'])
-    end
+    decoded ? decoded['role'] : nil
   end
 
-  def logged_in_user?
-    !!current_user
+  def role?(expected_role)
+    current_role == expected_role
   end
 
-  def authorize_user
-    render json: { error: 'Please log in as user' }, status: :unauthorized unless logged_in_user?
-  end
-
-  ##########################
-  # Admin Authentication
-  ##########################
-
+  ##################################
+  # ADMIN AUTH
+  ##################################
   def current_admin
     return @current_admin if defined?(@current_admin)
     decoded = decoded_token
-    if decoded && decoded['admin_id']
+    if decoded && decoded['admin_id'] && (decoded['role'] == 'admin' || decoded['role'] == 'super_admin')
       @current_admin = Admin.find_by(id: decoded['admin_id'])
     end
   end
@@ -68,20 +56,101 @@ class ApplicationController < ActionController::API
   end
 
   def authorize_admin
-    render json: { error: 'Please log in as admin' }, status: :unauthorized unless logged_in_admin?
+    unless logged_in_admin?
+      render json: { error: 'Forbidden: Admin must be logged in' }, status: :forbidden
+    end
   end
 
-  ##########################
-  # Private Helpers
-  ##########################
+  ##################################
+  # SUPER ADMIN AUTH
+  ##################################
+  def authorize_super_admin
+    unless current_admin && current_role == 'super_admin'
+      render json: { error: 'Forbidden: Only Super Admin can perform this action' }, status: :forbidden
+    end
+  end
+
+  ##################################
+  # USER AUTH
+  ##################################
+  def current_user
+    return @current_user if defined?(@current_user)
+    decoded = decoded_token
+    if decoded && decoded['user_id'] && decoded['role'] == 'user'
+      @current_user = User.find_by(id: decoded['user_id'])
+    end
+  end
+
+  def logged_in_user?
+    !!current_user
+  end
+
+  def authorize_user
+    unless logged_in_user?
+      render json: { error: 'Unauthorized: Please log in as user' }, status: :unauthorized
+    end
+  end
+
+  ##################################
+  # PARTNER AUTH (optional future)
+  ##################################
+  def current_partner
+    return @current_partner if defined?(@current_partner)
+    decoded = decoded_token
+    if decoded && decoded['partner_id'] && decoded['role'] == 'partner'
+      @current_partner = Partner.find_by(id: decoded['partner_id'])
+    end
+  end
+
+  def logged_in_partner?
+    !!current_partner
+  end
+
+  def authorize_partner
+    unless logged_in_partner?
+      render json: { error: 'Unauthorized: Please log in as partner' }, status: :unauthorized
+    end
+  end
+
+  ##################################
+  # RESTRICT MULTIPLE ROLE SESSIONS
+  ##################################
+  def restrict_if_logged_in_different_role(expected_role)
+    current = current_role
+    if current && current != expected_role
+      render json: { error: "You are currently logged in as #{current}. Please log out first." }, status: :forbidden
+    end
+  end
+
+  ##################################
+  # PRIVATE HELPERS
+  ##################################
   private
 
   def secret_key
-    # Use Rails credentials in production
     Rails.application.credentials.jwt_secret || Rails.application.secret_key_base
   end
 
   def set_default_format
     request.format = :json
   end
+  # app/controllers/application_controller.rb
+def restrict_if_logged_in_different_role(required_role)
+  decoded = decoded_token
+  return unless decoded && decoded['role']
+
+  current_role = decoded['role']
+
+  if current_role != required_role
+    render json: {
+      error: "You are already logged in as #{current_role.capitalize}. Please log out first to log in as #{required_role.capitalize}."
+    }, status: :forbidden
+  else
+    render json: {
+      error: "You are already logged in as #{current_role.capitalize}. Please log out before logging in again."
+    }, status: :forbidden
+  end
+end
+
+
 end

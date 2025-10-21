@@ -6,7 +6,11 @@ Rails.application.routes.draw do
       # ===========================
       post "/admin/login", to: "sessions#login_admin"
       post "/user/login", to: "sessions#login_user"
-      delete "/logout", to: "sessions#destroy"  # <-- Logout route
+      delete "/logout", to: "sessions#destroy"
+      # Partners — Self Service
+      # ===========================
+      post 'partners/register', to: 'partners#register'   # ✅ Partner registers themselves
+
 
       # ===========================
       # Users
@@ -29,15 +33,27 @@ Rails.application.routes.draw do
       resources :bookings, only: [:create, :index, :show, :update, :destroy]
 
       # ===========================
-      # Admin Dashboard & Admin Resources
+      # Admin Namespace
       # ===========================
       namespace :admin do
+        # 📊 Dashboard
+        get 'dashboard', to: 'dashboard#index'
         get 'stats', to: 'dashboard#stats'
 
+        # 🏨 Manage Bookings
         resources :bookings, only: [:index, :create, :update, :destroy]
+
+        # 👤 Manage Users
         resources :users, only: [:index, :destroy]
-        resources :admins, only: [:index, :create, :destroy]
+
+        # 👑 Manage Admins (super_admin only)
+        resources :admins, only: [:index, :create, :update, :destroy]
+
+        # 💬 Manage Messages
         resources :messages, only: [:index, :destroy]
+
+        # 🤝 Manage Partners
+        resources :partners, only: [:index, :show, :create, :destroy]
       end
 
       # ===========================

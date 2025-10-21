@@ -1,19 +1,20 @@
 class Rack::Attack
-  # Allow all local traffic
+  # ✅ Allow all local traffic
   safelist('allow-localhost') do |req|
-    '127.0.0.1' == req.ip || '::1' == req.ip
+    req.ip == '127.0.0.1' || req.ip == '::1'
   end
 
-  # Throttle login attempts by IP (5 requests per minute)
+  # ✅ Throttle login attempts by IP (5 requests per minute)
   throttle('limit logins', limit: 5, period: 60.seconds) do |req|
     if req.path == '/api/login' && req.post?
       req.ip
     end
   end
 
-  # Optional: custom block response
-  self.throttled_response = lambda do |env|
-    [ 429,  # status
+  # ✅ Updated: use throttled_responder instead of throttled_response
+  self.throttled_responder = lambda do |request|
+    [
+      429, # status
       { 'Content-Type' => 'application/json' },
       [ { error: 'Too many login attempts. Please try again later.' }.to_json ]
     ]

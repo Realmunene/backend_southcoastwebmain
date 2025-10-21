@@ -1,4 +1,3 @@
-# app/controllers/api/v1/sessions_controller.rb
 module Api
   module V1
     class SessionsController < ApplicationController
@@ -13,14 +12,21 @@ module Api
         admin = ::Admin.find_by(email: email)
 
         if admin&.authenticate(password)
-          token = encode_token({ admin_id: admin.id })
-          render json: { message: "Admin logged in successfully", admin: admin, token: token }, status: :ok
+          token = encode_token({ admin_id: admin.id, role: admin.role })
+          render json: {
+            message: "Admin logged in successfully",
+            admin: admin,
+            token: token
+          }, status: :ok
         else
           render json: { error: "Invalid email or password" }, status: :unauthorized
         end
       end
 
+      # ======================
+      # Admin Profile
       # GET /api/v1/admin/profile
+      # ======================
       before_action :authorize_admin, only: [:admin_profile]
       def admin_profile
         render json: { admin: current_admin }, status: :ok
@@ -38,13 +44,20 @@ module Api
 
         if user&.authenticate(password)
           token = encode_token({ user_id: user.id })
-          render json: { message: "User logged in successfully", user: user, token: token }, status: :ok
+          render json: {
+            message: "User logged in successfully",
+            user: user,
+            token: token
+          }, status: :ok
         else
           render json: { error: "Invalid email or password" }, status: :unauthorized
         end
       end
 
+      # ======================
+      # User Profile
       # GET /api/v1/user/profile
+      # ======================
       before_action :authorize_user, only: [:user_profile]
       def user_profile
         render json: { user: current_user }, status: :ok
@@ -55,10 +68,19 @@ module Api
       # DELETE /api/v1/logout
       # ======================
       def destroy
-        # JWT logout: client removes token; server can optionally blacklist if implemented
-        # For session-based auth:
         reset_session
         render json: { message: "Logged out successfully" }, status: :ok
+      end
+
+      private
+
+      # ======================
+      # Only allow super admins to create sub-admins
+      # ======================
+      def authorize_super_admin
+        unless current_admin && current_admin.role == "super_admin"
+          render json: { error: "Forbidden: Only Super Admin can perform this action" }, status: :forbidden
+        end
       end
     end
   end

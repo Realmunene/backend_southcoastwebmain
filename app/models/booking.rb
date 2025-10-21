@@ -1,7 +1,9 @@
 # app/models/booking.rb
 class Booking < ApplicationRecord
-  belongs_to :user  # required association
+  # 👇 Association
+  belongs_to :user
 
+  # 👇 Validations
   validates :nationality, :room_type, :check_in, :check_out, :guests, presence: true
   validate :check_out_after_check_in
 

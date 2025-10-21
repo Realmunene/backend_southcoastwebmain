@@ -3,8 +3,7 @@
 require 'countries'
 
 # ---- Seed Nationalities (all countries in the world) ----
-
-puts "Seeding nationalities..."
+puts "🌍 Seeding nationalities..."
 Nationality.destroy_all
 
 ISO3166::Country.all
@@ -17,8 +16,7 @@ ISO3166::Country.all
 puts "✅ Seeded #{Nationality.count} nationalities."
 
 # ---- Seed Room Types (with prices) ----
-
-puts "Seeding room types..."
+puts "🏨 Seeding room types..."
 room_options = [
   { name: "Executive Room, Ensuite", price: 75 },
   { name: "2-Connected Room, 1 Ensuite", price: 110 },
@@ -43,13 +41,17 @@ end
 puts "✅ Seeded #{RoomType.count} unique room types with prices."
 
 # ---- Seed Admin Accounts ----
+puts "👑 Seeding admin users..."
 
+# Main admin account (existing)
 puts "Seeding admin users..."
 
 # Main admin account
 Admin.find_or_create_by!(email: "southcoastoutdoors25@gmail.com") do |admin|
   admin.password = "Admin@123"
   admin.password_confirmation = "Admin@123"
+  admin.role = :admin
+  admin.name = "Super Admin"
 end
 
 # Backup/system admin if no other admin exists
@@ -58,9 +60,10 @@ if Admin.count == 1
     admin.password = 'Admin123!'
     admin.password_confirmation = 'Admin123!'
     admin.name = 'System Administrator'
-    admin.role = 'admin'
+    admin.role = :admin
   end
-  puts "✅ Admin user created: admin@example.com / Admin123!"
+  puts "✅ Backup Admin user created: admin@example.com / Admin123!"
 end
 
+puts "✅ Total Admin Users: #{Admin.count}"
 puts "🎉 Seeding complete!"
