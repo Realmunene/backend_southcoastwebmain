@@ -56,4 +56,29 @@ class Api::V1::Admin::AdminsController < ApplicationController
     end
 
     if admin.super_admin?
-      return render json: { error: "Cann
+      return render json: { error: "Cannot delete super admin." }, status: :unprocessable_entity
+    end
+
+    if admin.destroy
+      render json: { message: "Admin deleted successfully." }, status: :ok
+    else
+      render json: { errors: admin.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
+  private
+
+  def admin_params
+    params.require(:admin).permit(:name, :email, :password, :password_confirmation)
+  end
+
+  def authorize_admin
+    return if current_admin
+    render json: { error: "Unauthorized" }, status: :unauthorized
+  end
+
+  def authorize_super_admin
+    return if current_admin&.super_admin?
+    render json: { error: "Forbidden - Super Admin access required" }, status: :forbidden
+  end
+end
