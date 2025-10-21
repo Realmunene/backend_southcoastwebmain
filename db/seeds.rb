@@ -40,16 +40,20 @@ puts "✅ Seeded #{RoomType.count} unique room types with prices."
 # ---- Seed Admin Accounts ----
 puts "👑 Seeding admin users..."
 
+# Define roles as integers
+SUPER_ADMIN = 0
+ADMIN = 1
+
 # Ensure only one Super Admin exists
 super_admin_email = "southcoastoutdoors25@gmail.com"
-super_admin = Admin.find_by(role: 0) # ✅ Use integer for enum: 0 = super_admin
+super_admin = Admin.find_by(role: SUPER_ADMIN)
 
 if super_admin.nil?
   Admin.create!(
     email: super_admin_email,
     password: "Admin@123",
     password_confirmation: "Admin@123",
-    role: 0,           # ✅ integer value
+    role: SUPER_ADMIN,
     name: "Super Admin"
   )
   puts "✅ Super Admin created: #{super_admin_email}"
@@ -63,7 +67,7 @@ if Admin.count == 1
     admin.password = "Admin123!"
     admin.password_confirmation = "Admin123!"
     admin.name = "System Administrator"
-    admin.role = 1     # ✅ integer value for admin
+    admin.role = ADMIN
   end
   puts "✅ Backup Admin user created: admin@example.com / Admin123!"
 else
