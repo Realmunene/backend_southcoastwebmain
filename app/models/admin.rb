@@ -2,23 +2,14 @@
 class Admin < ApplicationRecord
   has_secure_password
 
-  # ✅ Delay enum definition until table and column exist
-  Rails.application.config.to_prepare do
-    begin
-      if ActiveRecord::Base.connection.data_source_exists?('admins') &&
-         ActiveRecord::Base.connection.column_exists?(:admins, :role)
-        Admin.enum role: { super_admin: 0, admin: 1 }
-      end
-    rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
-      # DB not ready yet, skip enum
-    end
-  end
+  # ✅ Comment out enum for now to avoid loading errors during seeds
+  # enum role: { super_admin: 0, admin: 1 }, _prefix: true
 
   # ✅ Validations
   validates :email, presence: true, uniqueness: true
   validates :password, length: { minimum: 6 }, if: -> { new_record? || !password.nil? }
   validate :strong_password
-  validate :single_super_admin, if: -> { role == "super_admin" rescue false }
+  validate :single_super_admin, if: -> { role.to_i == 0 rescue false }
 
   # ✅ Ensure only one super_admin exists
   def single_super_admin
@@ -30,7 +21,7 @@ class Admin < ApplicationRecord
 
   # ✅ Helper method
   def super_admin?
-    role == "super_admin" rescue false
+    role.to_i == 0 rescue false
   end
 
   private
