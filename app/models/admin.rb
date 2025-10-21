@@ -2,21 +2,24 @@ class Admin < ApplicationRecord
   has_secure_password
 
   # ✅ Define roles using enum (super_admin = 0, admin = 1)
-  Rails.application.config.to_prepare do
-    if ActiveRecord::Base.connection.data_source_exists?('admins') &&
-       ActiveRecord::Base.connection.column_exists?(:admins, :role)
-      Admin.enum role: { super_admin: 0, admin: 1 }
-    end
-  end
+  enum role: { super_admin: 0, admin: 1 }
 
   # ✅ Validations
   validates :email, presence: true, uniqueness: true
   validates :password, length: { minimum: 6 }, if: -> { new_record? || !password.nil? }
   validate :strong_password
+  validate :single_super_admin, if: -> { role == "super_admin" }
 
-  # ✅ Helper method to check super admin
+  # ✅ Custom validation to ensure only one super_admin exists
+  def single_super_admin
+    if Admin.where(role: :super_admin).where.not(id: id).exists?
+      errors.add(:role, "There can only be one Super Admin in the system.")
+    end
+  end
+
+  # ✅ Helper method to check if the current admin is super_admin
   def super_admin?
-    role == "super_admin" || role == 0
+    role == "super_admin"
   end
 
   private

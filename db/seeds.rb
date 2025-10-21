@@ -28,10 +28,7 @@ room_options = [
   { name: "Larger Apartment with Kitchen, Balcony, Living, 2 Ensuites", price: 140 }
 ]
 
-# Clear existing room types before seeding
 RoomType.destroy_all
-
-# Remove duplicates and seed
 room_options.uniq { |r| r[:name] }.each do |room|
   RoomType.find_or_create_by!(name: room[:name]) do |rt|
     rt.price = room[:price]
@@ -43,26 +40,34 @@ puts "✅ Seeded #{RoomType.count} unique room types with prices."
 # ---- Seed Admin Accounts ----
 puts "👑 Seeding admin users..."
 
-# Main admin account (existing)
-puts "Seeding admin users..."
+# Ensure only one Super Admin exists
+super_admin_email = "southcoastoutdoors25@gmail.com"
+super_admin = Admin.find_by(role: :super_admin)
 
-# Main admin account
-Admin.find_or_create_by!(email: "southcoastoutdoors25@gmail.com") do |admin|
-  admin.password = "Admin@123"
-  admin.password_confirmation = "Admin@123"
-  admin.role = :admin
-  admin.name = "Super Admin"
+if super_admin.nil?
+  Admin.create!(
+    email: super_admin_email,
+    password: "Admin@123",
+    password_confirmation: "Admin@123",
+    role: :super_admin,
+    name: "Super Admin"
+  )
+  puts "✅ Super Admin created: #{super_admin_email}"
+else
+  puts "ℹ️ Super Admin already exists (#{super_admin.email}). Skipping creation."
 end
 
-# Backup/system admin if no other admin exists
+# Optional: Create a backup admin if only the super_admin exists
 if Admin.count == 1
-  Admin.find_or_create_by!(email: 'admin@example.com') do |admin|
-    admin.password = 'Admin123!'
-    admin.password_confirmation = 'Admin123!'
-    admin.name = 'System Administrator'
+  Admin.find_or_create_by!(email: "admin@example.com") do |admin|
+    admin.password = "Admin123!"
+    admin.password_confirmation = "Admin123!"
+    admin.name = "System Administrator"
     admin.role = :admin
   end
   puts "✅ Backup Admin user created: admin@example.com / Admin123!"
+else
+  puts "ℹ️ Additional admin(s) already exist. No backup admin created."
 end
 
 puts "✅ Total Admin Users: #{Admin.count}"
