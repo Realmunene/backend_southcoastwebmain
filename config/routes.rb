@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  # 👇 Root path for the backend API (so Render doesn’t error on /)
+  root to: proc { [200, {}, ['Backend API running successfully']] }
+
   namespace :api do
     namespace :v1 do
       # ===========================
@@ -7,10 +10,11 @@ Rails.application.routes.draw do
       post "/admin/login", to: "sessions#login_admin"
       post "/user/login", to: "sessions#login_user"
       delete "/logout", to: "sessions#destroy"
+
+      # ===========================
       # Partners — Self Service
       # ===========================
-      post 'partners/register', to: 'partners#register'   # ✅ Partner registers themselves
-
+      post 'partners/register', to: 'partners#register'
 
       # ===========================
       # Users
@@ -36,23 +40,12 @@ Rails.application.routes.draw do
       # Admin Namespace
       # ===========================
       namespace :admin do
-        # 📊 Dashboard
         get 'dashboard', to: 'dashboard#index'
         get 'stats', to: 'dashboard#stats'
-
-        # 🏨 Manage Bookings
         resources :bookings, only: [:index, :create, :update, :destroy]
-
-        # 👤 Manage Users
         resources :users, only: [:index, :destroy]
-
-        # 👑 Manage Admins (super_admin only)
         resources :admins, only: [:index, :create, :update, :destroy]
-
-        # 💬 Manage Messages
         resources :messages, only: [:index, :destroy]
-
-        # 🤝 Manage Partners
         resources :partners, only: [:index, :show, :create, :destroy]
       end
 
