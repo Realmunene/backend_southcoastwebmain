@@ -21,7 +21,7 @@ module Api
           render json: { error: 'Partner not found' }, status: :not_found
         end
 
-        # POST /api/v1/admin/partners
+        # ✅ POST /api/v1/admin/partners
         def create
           partner = Partner.new(partner_params)
           if partner.save

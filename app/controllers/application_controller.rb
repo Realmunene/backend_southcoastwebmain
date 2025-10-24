@@ -7,13 +7,12 @@ class ApplicationController < ActionController::API
   ##################################
   def encode_token(payload, exp = 1.hour.from_now.to_i)
     payload[:exp] = exp
-    # ✅ Ensure role is always present
-    payload[:role] ||= 'user'
+    payload[:role] ||= 'user' # ✅ Always set a default role
     JWT.encode(payload, secret_key, 'HS256')
   end
 
   def auth_header
-    # Expected format: Authorization: Bearer <token>
+    # Expected: Authorization: Bearer <token>
     request.headers['Authorization']
   end
 
@@ -22,14 +21,14 @@ class ApplicationController < ActionController::API
     token = auth_header.split(' ').last
     begin
       decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256')
-      decoded.first # payload hash
+      decoded.first # return payload hash
     rescue JWT::DecodeError, JWT::ExpiredSignature
       nil
     end
   end
 
   ##################################
-  # CURRENT ROLE HELPERS
+  # ROLE HELPERS
   ##################################
   def current_role
     decoded = decoded_token
@@ -46,7 +45,7 @@ class ApplicationController < ActionController::API
   def current_admin
     return @current_admin if defined?(@current_admin)
     decoded = decoded_token
-    if decoded && decoded['admin_id'] && (decoded['role'] == 'admin' || decoded['role'] == 'super_admin')
+    if decoded && decoded['admin_id'] && %w[admin super_admin].include?(decoded['role'])
       @current_admin = Admin.find_by(id: decoded['admin_id'])
     end
   end
@@ -57,7 +56,7 @@ class ApplicationController < ActionController::API
 
   def authorize_admin
     unless logged_in_admin?
-      render json: { error: 'Forbidden: Admin must be logged in' }, status: :forbidden
+      render json: { error: 'Forbidden: Admin must be logged in.' }, status: :forbidden
     end
   end
 
@@ -65,8 +64,8 @@ class ApplicationController < ActionController::API
   # SUPER ADMIN AUTH
   ##################################
   def authorize_super_admin
-    unless current_admin && current_role == 'super_admin'
-      render json: { error: 'Forbidden: Only Super Admin can perform this action' }, status: :forbidden
+    unless current_admin&.role == 'super_admin'
+      render json: { error: 'Forbidden: Only Super Admin can perform this action.' }, status: :forbidden
     end
   end
 
@@ -87,7 +86,7 @@ class ApplicationController < ActionController::API
 
   def authorize_user
     unless logged_in_user?
-      render json: { error: 'Unauthorized: Please log in as user' }, status: :unauthorized
+      render json: { error: 'Unauthorized: Please log in as a user.' }, status: :unauthorized
     end
   end
 
@@ -108,17 +107,26 @@ class ApplicationController < ActionController::API
 
   def authorize_partner
     unless logged_in_partner?
-      render json: { error: 'Unauthorized: Please log in as partner' }, status: :unauthorized
+      render json: { error: 'Unauthorized: Please log in as partner.' }, status: :unauthorized
     end
   end
 
   ##################################
   # RESTRICT MULTIPLE ROLE SESSIONS
   ##################################
-  def restrict_if_logged_in_different_role(expected_role)
-    current = current_role
-    if current && current != expected_role
-      render json: { error: "You are currently logged in as #{current}. Please log out first." }, status: :forbidden
+  def restrict_if_logged_in_different_role(required_role)
+    decoded = decoded_token
+    return unless decoded && decoded['role']
+
+    current = decoded['role']
+    if current != required_role
+      render json: {
+        error: "You are currently logged in as #{current.capitalize}. Please log out first to log in as #{required_role.capitalize}."
+      }, status: :forbidden
+    else
+      render json: {
+        error: "You are already logged in as #{current.capitalize}. Please log out before logging in again."
+      }, status: :forbidden
     end
   end
 
@@ -134,23 +142,4 @@ class ApplicationController < ActionController::API
   def set_default_format
     request.format = :json
   end
-  # app/controllers/application_controller.rb
-def restrict_if_logged_in_different_role(required_role)
-  decoded = decoded_token
-  return unless decoded && decoded['role']
-
-  current_role = decoded['role']
-
-  if current_role != required_role
-    render json: {
-      error: "You are already logged in as #{current_role.capitalize}. Please log out first to log in as #{required_role.capitalize}."
-    }, status: :forbidden
-  else
-    render json: {
-      error: "You are already logged in as #{current_role.capitalize}. Please log out before logging in again."
-    }, status: :forbidden
-  end
-end
-
-
 end

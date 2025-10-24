@@ -7,7 +7,7 @@ Rails.application.configure do
   config.middleware.insert_before 0, Rack::Cors do
     allow do
       # Allow both local React app and deployed GitHub Pages site
-      origins 'http://localhost:3000', 'https://realmunene.github.io'
+      origins 'http://localhost:3001', 'https://realmunene.github.io'
 
       resource '*',
         headers: :any,
@@ -75,4 +75,27 @@ Rails.application.configure do
 
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
+
+  ##############################################
+  # ✅ Email Configuration for Production & Development
+  ##############################################
+  
+  # Default URL options for Action Mailer
+  config.action_mailer.default_url_options = { host: 'localhost:3000', protocol: 'http' }
+  
+  # SMTP settings for production
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address:              ENV['SMTP_ADDRESS'] || 'smtp.gmail.com',
+    port:                 ENV['SMTP_PORT'] || 587,
+    domain:               ENV['SMTP_DOMAIN'] || 'localhost',
+    user_name:            ENV['SMTP_USERNAME'],
+    password:             ENV['SMTP_PASSWORD'],
+    authentication:       ENV['SMTP_AUTHENTICATION'] || 'plain',
+    enable_starttls_auto: ENV['SMTP_ENABLE_STARTTLS_AUTO'] != 'false'
+  }
+
+  # Don't care if the mailer can't send in production
+  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.perform_caching = false
 end

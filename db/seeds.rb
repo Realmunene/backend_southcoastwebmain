@@ -20,11 +20,11 @@ puts "🏨 Seeding room types..."
 room_options = [
   { name: "Executive Room, Ensuite", price: 75 },
   { name: "2-Connected Room, 1 Ensuite", price: 110 },
-  { name: "2 BedRoom Apartment-Live-1, Ensuite", price: 110 },
-  { name: "2 BedRoom Apartment-Kitchen, 2 Ensuite", price: 125 },
+  { name: "2 Bedroom Apartment - Living + Kitchen + 1 Ensuite", price: 110 },
+  { name: "3-BedRoom Apartment-Kitchen, 2 Ensuite", price: 125 },
   { name: "ExecutiveRoom, Ensuite", price: 75 },
   { name: "2-Connected Room, I-Ensuite", price: 110 },
-  { name: "2 BedRoom Apartment with Kitchen, 1-Ensuite", price: 125 },
+  { name: "2-BedRoom Apartment with Kitchen, 1-Ensuite", price: 125 },
   { name: "Larger Apartment with Kitchen, Balcony, Living, 2 Ensuites", price: 140 }
 ]
 
@@ -44,40 +44,34 @@ puts "👑 Seeding admin users..."
 SUPER_ADMIN = 0
 ADMIN = 1
 
-super_admin_email = "southcoastoutdoors25@gmail.com"
-
-# For Render: Clear any conflicting super admins first
-conflicting_admins = Admin.where(role: SUPER_ADMIN)
-if conflicting_admins.any?
-  puts "🔄 Removing #{conflicting_admins.count} conflicting super admin records..."
-  conflicting_admins.destroy_all
-end
-
-# Create super admin
-begin
-  Admin.create!(
-    email: super_admin_email,
-    password: "Admin@123",
-    password_confirmation: "Admin@123",
-    role: SUPER_ADMIN,
-    name: "Super Admin"
-  )
-  puts "✅ Super Admin created: #{super_admin_email}"
-rescue => e
-  puts "⚠️ Super Admin creation issue: #{e.message}"
-  # Try alternative approach if creation fails
-  admin = Admin.find_or_initialize_by(email: super_admin_email)
-  admin.attributes = {
-    password: "Admin@123",
-    password_confirmation: "Admin@123",
-    role: SUPER_ADMIN,
-    name: "Super Admin"
+# Super admins we want created
+super_admins = [
+  {
+    email: "southcoastoutdoors25@gmail.com",
+    name: "Super Admin (Main)"
+  },
+  {
+    email: "joseph.m.munene690@gmail.com",
+    name: "Super Admin (Joseph)"
   }
-  admin.save!
-  puts "✅ Super Admin updated: #{super_admin_email}"
+]
+
+# Loop through and create super admins
+super_admins.each do |sa|
+  begin
+    Admin.find_or_create_by!(email: sa[:email]) do |admin|
+      admin.password = "Admin@123"
+      admin.password_confirmation = "Admin@123"
+      admin.role = SUPER_ADMIN
+      admin.name = sa[:name]
+    end
+    puts "✅ Super Admin active: #{sa[:email]}"
+  rescue => e
+    puts "⚠️ Issue with creating #{sa[:email]}: #{e.message}"
+  end
 end
 
-# Create backup admin only if no other admins exist (excluding the super admin)
+# Create backup admin only if no role=1 admins exist
 if Admin.where(role: ADMIN).none?
   begin
     Admin.create!(

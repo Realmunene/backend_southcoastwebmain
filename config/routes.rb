@@ -45,19 +45,19 @@ Rails.application.routes.draw do
         resources :bookings, only: [:index, :create, :update, :destroy]
         resources :users, only: [:index, :destroy]
         resources :admins, only: [:index, :create, :update, :destroy]
-        resources :messages, only: [:index, :destroy]
+        resources :contact_messages, only: [:index, :show, :destroy]
         resources :partners, only: [:index, :show, :create, :destroy]
       end
 
       # ===========================
       # Support Messages
       # ===========================
-      resources :support_messages, only: [:create]
+      resources :support_messages, only: [:create, :index]
 
       # ===========================
       # Contact Messages
       # ===========================
-      resources :contact_messages, only: [:create]
+      resources :contact_messages, only: [:create, :index]
 
       # ===========================
       # Health Check

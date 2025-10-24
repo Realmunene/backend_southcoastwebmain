@@ -25,7 +25,19 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          render json: { message: "Booking successful", booking: booking }, status: :created
+          # ✅ Trigger email notification to Super Admin (with error handling)
+          begin
+            BookingMailer.new_booking_notification(booking).deliver_later
+            Rails.logger.info "Booking notification email queued for booking #{booking.id}"
+          rescue => e
+            Rails.logger.error "Failed to queue booking email: #{e.message}"
+            # Don't fail the booking creation if email fails
+          end
+
+          render json: { 
+            message: "Booking successful", 
+            booking: booking 
+          }, status: :created
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
         end
@@ -61,25 +73,23 @@ module Api
 
       # Authorization using JWT
       def authorize_user!
-  header = request.headers["Authorization"]
-  token = header&.split(" ")&.last
+        header = request.headers["Authorization"]
+        token = header&.split(" ")&.last
 
-  if token.present?
-    begin
-      # ✅ Use credentials for secret_key_base
-      decoded = JWT.decode(token, Rails.application.credentials.secret_key_base, true, algorithm: "HS256")
-      @current_user = User.find_by(id: decoded[0]["user_id"])
-      render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
-    rescue JWT::DecodeError => e
-      render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
-    end
-  else
-    render json: { error: "Missing token" }, status: :unauthorized
-  end
-end
+        if token.present?
+          begin
+            decoded = JWT.decode(token, Rails.application.credentials.secret_key_base, true, algorithm: "HS256")
+            @current_user = User.find_by(id: decoded[0]["user_id"])
+            render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
+          rescue JWT::DecodeError => e
+            render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
+          end
+        else
+          render json: { error: "Missing token" }, status: :unauthorized
+        end
+      end
 
-
-      # Helper method to access current_user in controller
+      # Helper method to access current_user
       def current_user
         @current_user
       end
