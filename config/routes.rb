@@ -40,14 +40,19 @@ Rails.application.routes.draw do
       # Admin Namespace
       # ===========================
       namespace :admin do
-        get 'dashboard', to: 'dashboard#index'
-        get 'stats', to: 'dashboard#stats'
-        resources :bookings, only: [:index, :create, :update, :destroy]
-        resources :users, only: [:index, :destroy]
-        resources :admins, only: [:index, :create, :update, :destroy]
-        resources :contact_messages, only: [:index, :show, :destroy]
-        resources :partners, only: [:index, :show, :create, :destroy]
+      get 'dashboard', to: 'dashboard#index'
+      get 'stats', to: 'dashboard#stats'
+
+      resources :bookings, only: [:index, :create, :update, :destroy]
+      resources :users, only: [:index, :destroy]
+      resources :admins, only: [:index, :create, :update, :destroy]
+      
+      resources :contact_messages, only: [:index, :show, :destroy] do
+        patch :mark_as_read, on: :member
       end
+
+      resources :partners, only: [:index, :show, :create, :destroy]
+    end
 
       # ===========================
       # Support Messages
