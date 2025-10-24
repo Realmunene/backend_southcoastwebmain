@@ -21,13 +21,12 @@ module Api
           booking = Booking.new(booking_params)
 
           if booking.save
-            # ✅ Trigger email notification to Super Admin (with error handling)
+            # ✅ Trigger notification email safely
             begin
               BookingMailer.new_booking_notification(booking).deliver_later
-              Rails.logger.info "Admin booking notification email queued for booking #{booking.id}"
+              Rails.logger.info "Admin booking notification queued for booking #{booking.id}"
             rescue => e
-              Rails.logger.error "Failed to queue admin booking email: #{e.message}"
-              # Don't fail the booking creation if email fails
+              Rails.logger.error "Failed to queue booking email: #{e.message}"
             end
 
             render json: {
@@ -35,9 +34,7 @@ module Api
               booking: booking
             }, status: :created
           else
-            render json: {
-              errors: booking.errors.full_messages
-            }, status: :unprocessable_entity
+            render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
           end
         end
 
@@ -49,9 +46,7 @@ module Api
               booking: @booking
             }, status: :ok
           else
-            render json: {
-              errors: @booking.errors.full_messages
-            }, status: :unprocessable_entity
+            render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
           end
         end
 
@@ -68,7 +63,6 @@ module Api
           return render json: { error: "Booking not found" }, status: :not_found unless @booking
         end
 
-        # Matches user strong params (no user_id)
         def booking_params
           params.require(:booking).permit(
             :nationality,
@@ -76,31 +70,38 @@ module Api
             :check_in,
             :check_out,
             :guests,
-            :user_id,        # Admin can assign a user manually
+            :user_id,  # Admin can attach user
             :status,
             :notes
           )
         end
 
-        # JWT admin guard
+        # ✅ JWT admin guard
         def authorize_admin!
           header = request.headers["Authorization"]
           token = header&.split(" ")&.last
 
-          if token.present?
-            begin
-              decoded = JWT.decode(token, Rails.application.credentials.secret_key_base, true, algorithm: "HS256")
-              @current_admin = Admin.find_by(id: decoded[0]["admin_id"])
+          unless token.present?
+            return render json: { error: "Missing token" }, status: :unauthorized
+          end
 
-              unless @current_admin && @current_admin.role == 0 # 0 = SUPER_ADMIN
-                return render json: { error: "Forbidden: Admin access only" }, status: :forbidden
-              end
+          begin
+            decoded = JWT.decode(
+              token,
+              Rails.application.credentials.secret_key_base,
+              true,
+              { algorithm: "HS256" }
+            )
 
-            rescue JWT::DecodeError => e
-              render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
+            # ✅ Ensure model lookup uses global scope
+            @current_admin = ::Admin.find_by(id: decoded[0]["admin_id"])
+
+            unless @current_admin && @current_admin.role == 0
+              return render json: { error: "Forbidden: Admin access only" }, status: :forbidden
             end
-          else
-            render json: { error: "Missing token" }, status: :unauthorized
+
+          rescue JWT::DecodeError => e
+            return render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
           end
         end
 
