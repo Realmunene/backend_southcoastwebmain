@@ -26,7 +26,20 @@ module Api
         end
 
         def authenticate_admin!
-          unless current_user&.admin?
+          token = request.headers['Authorization']&.split(' ')&.last
+          
+          if token
+            begin
+              decoded_token = JWT.decode(token, Rails.application.secrets.secret_key_base)
+              admin_id = decoded_token[0]['admin_id']
+              @current_admin = Admin.find_by(id: admin_id)
+            rescue JWT::DecodeError
+              render json: { error: "Invalid token" }, status: :unauthorized
+              return
+            end
+          end
+
+          unless @current_admin
             render json: { error: "Unauthorized" }, status: :unauthorized
           end
         end
