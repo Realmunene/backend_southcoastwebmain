@@ -24,9 +24,11 @@ module Api
           if booking.save
             send_email(:new, booking)
 
-            render json: { message: "Booking created", booking: booking }, status: :created
+            render json: { message: "Booking created", booking: booking },
+                   status: :created
           else
-            render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
+            render json: { errors: booking.errors.full_messages },
+                   status: :unprocessable_entity
           end
         end
 
@@ -35,9 +37,11 @@ module Api
           if @booking.update(booking_params)
             send_email(:updated, @booking)
 
-            render json: { message: "Booking updated", booking: @booking }, status: :ok
+            render json: { message: "Booking updated", booking: @booking },
+                   status: :ok
           else
-            render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
+            render json: { errors: @booking.errors.full_messages },
+                   status: :unprocessable_entity
           end
         end
 
@@ -71,28 +75,27 @@ module Api
 
         def authorize_admin!
           header = request.headers["Authorization"]
-          token = header&.split(" ")&.last
+          token  = header&.split(" ")&.last
 
-          unless token.present?
-            return render json: { error: "Missing token" }, status: :unauthorized
-          end
+          return render json: { error: "Missing token" }, status: :unauthorized unless token
 
           begin
             decoded = JWT.decode(
               token,
               Rails.application.credentials.secret_key_base,
               true,
-              { algorithm: "HS256" }
+              algorithm: "HS256"
             )
 
             @current_admin = ::Admin.find_by(id: decoded[0]["admin_id"])
 
             unless @current_admin && @current_admin.role == 0
-              return render json: { error: "Forbidden: Admin access only" }, status: :forbidden
+              return render json: { error: "Forbidden: Admin access only" },
+                             status: :forbidden
             end
-
           rescue JWT::DecodeError => e
-            return render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
+            return render json: { error: "Invalid token: #{e.message}" },
+                           status: :unauthorized
           end
         end
 
@@ -100,7 +103,7 @@ module Api
           @current_admin
         end
 
-        # ===== Shared email trigger =====
+        # Shared mailer
         def send_email(type, booking)
           begin
             case type
@@ -111,8 +114,6 @@ module Api
             when :cancelled
               BookingMailer.cancel_booking_notification(booking).deliver_later
             end
-
-            Rails.logger.info "Email queued for #{type} booking ##{booking.id}"
           rescue => e
             Rails.logger.error "Failed to send #{type} email: #{e.message}"
           end

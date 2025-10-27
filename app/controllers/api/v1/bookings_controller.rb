@@ -13,11 +13,9 @@ module Api
       # GET /api/v1/bookings/:id
       def show
         booking = current_user.bookings.find_by(id: params[:id])
-        if booking
-          render json: booking, status: :ok
-        else
-          render json: { error: "Booking not found" }, status: :not_found
-        end
+        return render json: { error: "Booking not found" }, status: :not_found unless booking
+
+        render json: booking, status: :ok
       end
 
       # POST /api/v1/bookings
@@ -27,12 +25,11 @@ module Api
         if booking.save
           send_email(:new, booking)
 
-          render json: {
-            message: "Booking successful",
-            booking: booking
-          }, status: :created
+          render json: { message: "Booking successful", booking: booking },
+                 status: :created
         else
-          render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: booking.errors.full_messages },
+                 status: :unprocessable_entity
         end
       end
 
@@ -44,9 +41,11 @@ module Api
         if booking.update(booking_params)
           send_email(:updated, booking)
 
-          render json: { message: "Booking updated", booking: booking }, status: :ok
+          render json: { message: "Booking updated", booking: booking },
+                 status: :ok
         else
-          render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: booking.errors.full_messages },
+                 status: :unprocessable_entity
         end
       end
 
@@ -64,23 +63,33 @@ module Api
       private
 
       def booking_params
-        params.require(:booking).permit(:nationality, :room_type, :check_in, :check_out, :guests)
+        params.require(:booking).permit(
+          :nationality,
+          :room_type,
+          :check_in,
+          :check_out,
+          :guests
+        )
       end
 
       def authorize_user!
         header = request.headers["Authorization"]
-        token = header&.split(" ")&.last
+        token  = header&.split(" ")&.last
 
-        if token.present?
-          begin
-            decoded = JWT.decode(token, Rails.application.credentials.secret_key_base, true, algorithm: "HS256")
-            @current_user = User.find_by(id: decoded[0]["user_id"])
-            render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
-          rescue JWT::DecodeError => e
-            render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
-          end
-        else
-          render json: { error: "Missing token" }, status: :unauthorized
+        return render json: { error: "Missing token" }, status: :unauthorized unless token
+
+        begin
+          decoded = JWT.decode(
+            token,
+            Rails.application.credentials.secret_key_base,
+            true,
+            algorithm: "HS256"
+          )
+          @current_user = User.find_by(id: decoded[0]["user_id"])
+
+          return render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
+        rescue JWT::DecodeError => e
+          return render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
         end
       end
 
@@ -88,7 +97,7 @@ module Api
         @current_user
       end
 
-      # ===== Shared email trigger =====
+      # Shared mailer
       def send_email(type, booking)
         begin
           case type
@@ -99,8 +108,6 @@ module Api
           when :cancelled
             BookingMailer.cancel_booking_notification(booking).deliver_later
           end
-
-          Rails.logger.info "Email queued for #{type} booking ##{booking.id}"
         rescue => e
           Rails.logger.error "Failed to send #{type} email: #{e.message}"
         end
