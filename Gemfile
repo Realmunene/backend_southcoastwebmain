@@ -44,6 +44,9 @@ gem "thruster", require: false
 group :production do
   gem "solid_cache"
 end
+group :development, :test do
+  gem 'dotenv-rails'
+end
 
 # Development / Test tools
 group :development, :test do
