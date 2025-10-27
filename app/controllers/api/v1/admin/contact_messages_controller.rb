@@ -3,67 +3,57 @@ module Api
     module Admin
       class ContactMessagesController < ApplicationController
         before_action :authenticate_admin!
-        before_action :set_contact_message, only: [:show, :destroy, :mark_as_read]
+        before_action :set_contact_message, only: [:show, :destroy]
 
-        # GET /api/v1/admin/contact_messages
         def index
           contact_messages = ContactMessage.order(created_at: :desc)
-          render json: { contact_messages: contact_messages }, status: :ok
+          render json: contact_messages, status: :ok
         end
 
-        # GET /api/v1/admin/contact_messages/:id
         def show
-          render json: @contact_message
+          render json: @contact_message, status: :ok
         end
 
-        # PATCH /api/v1/admin/contact_messages/:id/mark_as_read
-        def mark_as_read
-          if @contact_message.update(status: 'read')
-            render json: { message: "Message marked as read." }, status: :ok
-          else
-            render json: { error: "Failed to update message." }, status: :unprocessable_entity
-          end
-        end
-
-        # DELETE /api/v1/admin/contact_messages/:id
         def destroy
           @contact_message.destroy
-          render json: { message: "Message deleted successfully." }, status: :ok
+          head :no_content
         end
 
         private
 
         def set_contact_message
           @contact_message = ContactMessage.find(params[:id])
+        rescue ActiveRecord::RecordNotFound
+          render json: { error: "Message not found" }, status: :not_found
         end
 
-        # ✅ Admin Auth using JWT
         def authenticate_admin!
-          token = request.headers['Authorization']&.split(' ')&.last
+          header = request.headers['Authorization']
 
-          unless token
-            render json: { error: "Missing authentication token" }, status: :unauthorized
-            return
+          unless header.present?
+            return render json: { error: "Missing Authorization header" }, status: :unauthorized
           end
 
+          token = header.split(" ").last
+
           begin
-            decoded = JWT.decode(token, Rails.application.secrets.secret_key_base)
+            decoded = JWT.decode(
+              token,
+              Rails.application.credentials.secret_key_base, # ✅ Rails 8 safe
+              true,
+              { algorithm: "HS256" }
+            )
+
             admin_id = decoded[0]["admin_id"]
-            @current_admin = Admin.find_by(id: admin_id)
-          rescue JWT::DecodeError
-            render json: { error: "Invalid token" }, status: :unauthorized
-            return
+            @current_admin = ::Admin.find_by(id: admin_id) # ✅ global reference
+
+          rescue JWT::DecodeError => e
+            return render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
           end
 
           unless @current_admin
-            render json: { error: "Unauthorized admin" }, status: :unauthorized
+            return render json: { error: "Unauthorized admin" }, status: :unauthorized
           end
-        end
-
-        # ✅ Safer global fallback
-        rescue_from StandardError do |e|
-          Rails.logger.error("ContactMessagesController Error: #{e.message}")
-          render json: { error: "Internal Server Error: #{e.message}" }, status: 500
         end
       end
     end
