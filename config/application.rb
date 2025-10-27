@@ -43,6 +43,10 @@ module BackendSouthcoastwebmain
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore
     config.middleware.use Rack::Attack
+    config.solid_queue.enabled = false
+    config.active_job.queue_adapter = :inline
+    config.solid_cable.enabled = false
+
 
   end
 end

@@ -102,11 +102,11 @@ module Api
         begin
           case type
           when :new
-            BookingMailer.new_booking_notification(booking).deliver_later
+            BookingMailer.new_booking_notification(booking).deliver_now
           when :updated
-            BookingMailer.update_booking_notification(booking).deliver_later
+            BookingMailer.update_booking_notification(booking).deliver_now
           when :cancelled
-            BookingMailer.cancel_booking_notification(booking).deliver_later
+            BookingMailer.cancel_booking_notification(booking).deliver_now
           end
         rescue => e
           Rails.logger.error "Failed to send #{type} email: #{e.message}"
