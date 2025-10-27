@@ -26,7 +26,7 @@ gem 'rack-cors'
 gem 'rack-attack'
 
 # Fix fiddle warning
-gem "fiddle"
+# gem "fiddle"
 
 # Needed on Windows
 gem "tzinfo-data", platforms: %i[ windows jruby ]
