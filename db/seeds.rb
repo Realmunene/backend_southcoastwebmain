@@ -20,7 +20,7 @@ puts "🏨 Seeding room types..."
 room_options = [
   { name: "Executive Room, Ensuite", price: 75 },
   { name: "2-Connected Room, 1 Ensuite", price: 110 },
-  { name: "2 Bedroom Apartment - Living + Kitchen + 1 Ensuite", price: 110 },
+  { name: "2 Bedroom Apartment - Living + Kitchen + 2 Ensuite", price: 110 },
   { name: "3-BedRoom Apartment-Kitchen, 2 Ensuite", price: 125 },
   { name: "ExecutiveRoom, Ensuite", price: 75 },
   { name: "2-Connected Room, I-Ensuite", price: 110 },

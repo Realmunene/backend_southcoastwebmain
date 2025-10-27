@@ -25,18 +25,11 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          # ✅ Trigger email notification to Super Admin (with error handling)
-          begin
-            BookingMailer.new_booking_notification(booking).deliver_later
-            Rails.logger.info "Booking notification email queued for booking #{booking.id}"
-          rescue => e
-            Rails.logger.error "Failed to queue booking email: #{e.message}"
-            # Don't fail the booking creation if email fails
-          end
+          send_email(:new, booking)
 
-          render json: { 
-            message: "Booking successful", 
-            booking: booking 
+          render json: {
+            message: "Booking successful",
+            booking: booking
           }, status: :created
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -49,6 +42,8 @@ module Api
         return render json: { error: "Booking not found" }, status: :not_found unless booking
 
         if booking.update(booking_params)
+          send_email(:updated, booking)
+
           render json: { message: "Booking updated", booking: booking }, status: :ok
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -61,17 +56,17 @@ module Api
         return render json: { error: "Booking not found" }, status: :not_found unless booking
 
         booking.destroy
-        render json: { message: "Booking deleted" }, status: :ok
+        send_email(:cancelled, booking)
+
+        render json: { message: "Booking cancelled" }, status: :ok
       end
 
       private
 
-      # Strong parameters (user_id removed)
       def booking_params
         params.require(:booking).permit(:nationality, :room_type, :check_in, :check_out, :guests)
       end
 
-      # Authorization using JWT
       def authorize_user!
         header = request.headers["Authorization"]
         token = header&.split(" ")&.last
@@ -89,9 +84,26 @@ module Api
         end
       end
 
-      # Helper method to access current_user
       def current_user
         @current_user
+      end
+
+      # ===== Shared email trigger =====
+      def send_email(type, booking)
+        begin
+          case type
+          when :new
+            BookingMailer.new_booking_notification(booking).deliver_later
+          when :updated
+            BookingMailer.update_booking_notification(booking).deliver_later
+          when :cancelled
+            BookingMailer.cancel_booking_notification(booking).deliver_later
+          end
+
+          Rails.logger.info "Email queued for #{type} booking ##{booking.id}"
+        rescue => e
+          Rails.logger.error "Failed to send #{type} email: #{e.message}"
+        end
       end
     end
   end

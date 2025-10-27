@@ -1,3 +1,4 @@
+# app/controllers/api/v1/admin/bookings_controller.rb
 module Api
   module V1
     module Admin
@@ -21,18 +22,9 @@ module Api
           booking = Booking.new(booking_params)
 
           if booking.save
-            # ✅ Trigger notification email safely
-            begin
-              BookingMailer.new_booking_notification(booking).deliver_later
-              Rails.logger.info "Admin booking notification queued for booking #{booking.id}"
-            rescue => e
-              Rails.logger.error "Failed to queue booking email: #{e.message}"
-            end
+            send_email(:new, booking)
 
-            render json: {
-              message: "✅ Booking created",
-              booking: booking
-            }, status: :created
+            render json: { message: "Booking created", booking: booking }, status: :created
           else
             render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
           end
@@ -41,10 +33,9 @@ module Api
         # PATCH/PUT /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            render json: {
-              message: "✅ Booking updated",
-              booking: @booking
-            }, status: :ok
+            send_email(:updated, @booking)
+
+            render json: { message: "Booking updated", booking: @booking }, status: :ok
           else
             render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
           end
@@ -53,7 +44,9 @@ module Api
         # DELETE /api/v1/admin/bookings/:id
         def destroy
           @booking.destroy
-          render json: { message: "🗑️ Booking deleted" }, status: :ok
+          send_email(:cancelled, @booking)
+
+          render json: { message: "Booking cancelled" }, status: :ok
         end
 
         private
@@ -70,13 +63,12 @@ module Api
             :check_in,
             :check_out,
             :guests,
-            :user_id,  # Admin can attach user
+            :user_id,
             :status,
             :notes
           )
         end
 
-        # ✅ JWT admin guard
         def authorize_admin!
           header = request.headers["Authorization"]
           token = header&.split(" ")&.last
@@ -93,7 +85,6 @@ module Api
               { algorithm: "HS256" }
             )
 
-            # ✅ Ensure model lookup uses global scope
             @current_admin = ::Admin.find_by(id: decoded[0]["admin_id"])
 
             unless @current_admin && @current_admin.role == 0
@@ -107,6 +98,24 @@ module Api
 
         def current_admin
           @current_admin
+        end
+
+        # ===== Shared email trigger =====
+        def send_email(type, booking)
+          begin
+            case type
+            when :new
+              BookingMailer.new_booking_notification(booking).deliver_later
+            when :updated
+              BookingMailer.update_booking_notification(booking).deliver_later
+            when :cancelled
+              BookingMailer.cancel_booking_notification(booking).deliver_later
+            end
+
+            Rails.logger.info "Email queued for #{type} booking ##{booking.id}"
+          rescue => e
+            Rails.logger.error "Failed to send #{type} email: #{e.message}"
+          end
         end
       end
     end
