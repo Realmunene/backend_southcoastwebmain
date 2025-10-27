@@ -71,14 +71,14 @@ Rails.application.configure do
 
   # ✅ Resend SMTP settings
   # NOTE: Use SMTP credentials from https://resend.com
-  config.action_mailer.smtp_settings = {
-    address:              "smtp.resend.com",
-    port:                 587,
-    user_name:            ENV['joseph.m.munene690'], # ORRK_****
-    password:             ENV['re_JcE5pLSE_MTskgUR5Fag9s6TbUehPNdX9'], # API key token
-    authentication:       :plain,
-    enable_starttls_auto: true
-  }
+config.action_mailer.smtp_settings = {
+  address: "smtp.resend.com",
+  port: 587,
+  user_name: ENV['RESEND_USERNAME'],
+  password: ENV['RESEND_API_KEY'],
+  authentication: :plain,
+  enable_starttls_auto: true
+}
 
   # ✅ Recommended for debugging email delivery in production
   config.action_mailer.raise_delivery_errors = true
