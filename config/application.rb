@@ -45,7 +45,7 @@ module BackendSouthcoastwebmain
     config.middleware.use Rack::Attack
     config.solid_queue.enabled = false
     config.active_job.queue_adapter = :inline
-    config.solid_cable.enabled = false
+    
 
 
   end

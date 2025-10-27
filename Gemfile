@@ -43,8 +43,6 @@ gem "thruster", require: false
 # ✅ ✅ Solid gems used ONLY in production (never on Windows dev)
 group :production do
   gem "solid_cache"
-  gem "solid_queue"
-  gem "solid_cable"
 end
 
 # Development / Test tools
