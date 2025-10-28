@@ -40,3 +40,5 @@ preload_app!
 
 # Allow puma to be restarted by `rails restart` command.
 plugin :tmp_restart
+
+stdout_redirect 'log/puma.stdout.log', 'log/puma.stderr.log', true
