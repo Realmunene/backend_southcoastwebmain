@@ -23,7 +23,7 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          send_booking_email(:new, booking)
+          send_email(:new, booking)
           render json: { message: "Booking successful", booking: booking }, status: :created
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -36,7 +36,7 @@ module Api
         return render json: { error: "Booking not found" }, status: :not_found unless booking
 
         if booking.update(booking_params)
-          send_booking_email(:updated, booking)
+          send_email(:updated, booking)
           render json: { message: "Booking updated", booking: booking }, status: :ok
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -49,18 +49,25 @@ module Api
         return render json: { error: "Booking not found" }, status: :not_found unless booking
 
         booking.destroy
-        send_booking_email(:cancelled, booking)
+        send_email(:cancelled, booking)
         render json: { message: "Booking cancelled" }, status: :ok
       end
 
       private
 
       def booking_params
-        params.require(:booking).permit(:nationality, :room_type, :check_in, :check_out, :guests)
+        params.require(:booking).permit(
+          :nationality,
+          :room_type,
+          :check_in,
+          :check_out,
+          :guests
+        )
       end
 
       def authorize_user!
-        token = request.headers["Authorization"]&.split(" ")&.last
+        header = request.headers["Authorization"]
+        token  = header&.split(" ")&.last
         return render json: { error: "Missing token" }, status: :unauthorized unless token
 
         begin
@@ -68,7 +75,7 @@ module Api
           @current_user = User.find_by(id: decoded[0]["user_id"])
           return render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
         rescue JWT::DecodeError => e
-          render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
+          return render json: { error: "Invalid token: #{e.message}" }, status: :unauthorized
         end
       end
 
@@ -76,14 +83,16 @@ module Api
         @current_user
       end
 
-      # Unified mailer method
-      def send_booking_email(type, booking)
-        mailer = case type
-                 when :new then BookingMailer.new_booking_notification(booking)
-                 when :updated then BookingMailer.update_booking_notification(booking)
-                 when :cancelled then BookingMailer.cancel_booking_notification(booking)
-                 end
-        mailer&.deliver_now
+      # Send email using Resend API
+      def send_email(type, booking)
+        case type
+        when :new
+          BookingMailer.new_booking_notification(booking)
+        when :updated
+          BookingMailer.update_booking_notification(booking)
+        when :cancelled
+          BookingMailer.cancel_booking_notification(booking)
+        end
       rescue => e
         Rails.logger.error "Failed to send #{type} email: #{e.message}"
       end

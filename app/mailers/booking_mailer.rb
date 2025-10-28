@@ -1,41 +1,47 @@
 # app/mailers/booking_mailer.rb
 class BookingMailer < ApplicationMailer
-  default from: "onboarding@resend.dev"
+  require 'resend'
+
+  RESEND = Resend::Client.new(api_key: ENV['RESEND_API_KEY'])
 
   # New booking notification
   def new_booking_notification(booking)
-    @booking = booking
-    mail(
-      to: "joseph.m.munene690@gmail.com",
+    send_booking_email(
+      booking,
       subject: "✅ New Booking Received!"
-    ) do |format|
-      format.html { render html: booking_html(@booking).html_safe }
-    end
+    )
   end
 
   # Booking update notification
   def update_booking_notification(booking)
-    @booking = booking
-    mail(
-      to: "joseph.m.munene690@gmail.com",
+    send_booking_email(
+      booking,
       subject: "✏️ Booking Updated!"
-    ) do |format|
-      format.html { render html: booking_html(@booking).html_safe }
-    end
+    )
   end
 
   # Booking cancellation notification
   def cancel_booking_notification(booking)
-    @booking = booking
-    mail(
-      to: "joseph.m.munene690@gmail.com",
+    send_booking_email(
+      booking,
       subject: "❌ Booking Cancelled!"
-    ) do |format|
-      format.html { render html: booking_html(@booking).html_safe }
-    end
+    )
   end
 
   private
+
+  def send_booking_email(booking, subject:)
+    html_content = booking_html(booking)
+
+    RESEND.emails.send(
+      from: "onboarding@resend.dev",
+      to: "joseph.m.munene690@gmail.com",
+      subject: subject,
+      html: html_content
+    )
+  rescue => e
+    Rails.logger.error "Failed to send #{subject} email: #{e.message}"
+  end
 
   # Common HTML template for bookings
   def booking_html(booking)
