@@ -1,49 +1,46 @@
 # app/mailers/booking_mailer.rb
 class BookingMailer < ApplicationMailer
-  require 'resend'
+  default from: "onboarding@resend.dev"
 
-  RESEND = Resend::Client.new(api_key: ENV['RESEND_API_KEY'])
+  # Initialize Resend client
+  RESEND_CLIENT = Resend::Client.new(api_key: ENV.fetch("RESEND_API_KEY") { "" })
 
   # New booking notification
   def new_booking_notification(booking)
-    send_booking_email(
-      booking,
-      subject: "✅ New Booking Received!"
+    @booking = booking
+    RESEND_CLIENT.emails.send(
+      from: "onboarding@resend.dev",
+      to: "joseph.m.munene690@gmail.com",
+      subject: "✅ New Booking Received!",
+      html: booking_html(@booking)
     )
   end
 
-  # Booking update notification
+  # Update booking notification
   def update_booking_notification(booking)
-    send_booking_email(
-      booking,
-      subject: "✏️ Booking Updated!"
+    @booking = booking
+    RESEND_CLIENT.emails.send(
+      from: "onboarding@resend.dev",
+      to: "joseph.m.munene690@gmail.com",
+      subject: "✏️ Booking Updated!",
+      html: booking_html(@booking)
     )
   end
 
-  # Booking cancellation notification
+  # Cancel booking notification
   def cancel_booking_notification(booking)
-    send_booking_email(
-      booking,
-      subject: "❌ Booking Cancelled!"
+    @booking = booking
+    RESEND_CLIENT.emails.send(
+      from: "onboarding@resend.dev",
+      to: "joseph.m.munene690@gmail.com",
+      subject: "❌ Booking Cancelled!",
+      html: booking_html(@booking)
     )
   end
 
   private
 
-  def send_booking_email(booking, subject:)
-    html_content = booking_html(booking)
-
-    RESEND.emails.send(
-      from: "onboarding@resend.dev",
-      to: "joseph.m.munene690@gmail.com",
-      subject: subject,
-      html: html_content
-    )
-  rescue => e
-    Rails.logger.error "Failed to send #{subject} email: #{e.message}"
-  end
-
-  # Common HTML template for bookings
+  # Common HTML template
   def booking_html(booking)
     <<~HTML
       <!DOCTYPE html>
