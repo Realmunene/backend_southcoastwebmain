@@ -1,52 +1,73 @@
 require "active_support/core_ext/integer/time"
 
-Rails.application.configure do
-  STDOUT.sync = true  # Ensure unbuffered logs
+# Ensure logs flush immediately
+STDOUT.sync = true
 
-  # Force Rack::Cors middleware for React frontend
+Rails.application.configure do
+  ##############################################
+  # ✅ Force Rack::Cors middleware to run in production
+  ##############################################
   config.middleware.insert_before 0, Rack::Cors do
     allow do
+      # Allow both local React app and deployed GitHub Pages site
       origins 'http://localhost:3001', 'https://realmunene.github.io'
+
       resource '*',
-               headers: :any,
-               methods: [:get, :post, :put, :patch, :delete, :options, :head],
-               expose: ['Authorization'],
-               credentials: false
+        headers: :any,
+        methods: [:get, :post, :put, :patch, :delete, :options, :head],
+        expose: ['Authorization'],
+        credentials: false
     end
   end
+  ##############################################
 
-  # Performance & caching
-  config.active_model_secure_password_min_cost = false
+  # Code is not reloaded between requests
   config.enable_reloading = false
+
+  # Eager load code on boot
   config.eager_load = true
+
+  # Disable full error reports in production
   config.consider_all_requests_local = false
 
   # Serve static files
   config.public_file_server.enabled = ENV['RAILS_SERVE_STATIC_FILES'].present? || ENV['RENDER'].present?
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 
+  # Active Storage
   config.active_storage.service = :local
-  config.force_ssl = true
-  config.assume_ssl = true
 
-  # Logging to STDOUT for Render
+  # Force SSL
+  config.assume_ssl = true
+  config.force_ssl = true
+
+  ##############################################
+  # ✅ Logging to STDOUT for Render / Docker
+  ##############################################
   logger           = ActiveSupport::Logger.new(STDOUT)
   logger.formatter = ::Logger::Formatter.new
-  logger.auto_flushing = true
   config.logger    = ActiveSupport::TaggedLogging.new(logger)
   config.log_level = :debug
   config.log_tags  = [:request_id]
 
-  # Active Job
+  # Silence healthcheck logs
+  config.silence_healthcheck_path = "/up"
+
+  config.active_support.report_deprecations = false
+
+  # Use inline jobs (no solid_queue)
   config.active_job.queue_adapter = :inline
 
-  # I18n fallbacks
+  # Fallbacks for I18n
   config.i18n.fallbacks = true
 
-  # Schema dump
+  # Don't dump schema after migrations
   config.active_record.dump_schema_after_migration = false
+  config.active_record.attributes_for_inspect = [:id]
 
-  # ActionMailer with Resend SMTP
+  ##############################################
+  # ✅ ActionMailer configured to use RESEND SMTP
+  ##############################################
   config.action_mailer.default_url_options = {
     host: ENV['APP_HOST'] || 'your-domain.com',
     protocol: 'https'
@@ -61,6 +82,7 @@ Rails.application.configure do
     authentication: :plain,
     enable_starttls_auto: true
   }
+
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_caching = false
 end
