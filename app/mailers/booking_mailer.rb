@@ -1,18 +1,21 @@
 # app/mailers/booking_mailer.rb
 class BookingMailer < ApplicationMailer
-  default from: "onboarding@resend.dev"
+  default from: "no-reply@southcoast.com"
+  ADMIN_EMAIL = "southcoastoutdoors25@gmail.com"
 
   # =====================================
   # 🆕 New Booking Notification
   # =====================================
   def new_booking_notification
     @booking = params[:booking]
-    @user = @booking.user
-    @admin_email = "southcoastoutdoors25@gmail.com"
+    return if @booking.blank?
+
+    @user = @booking.user || @booking.try(:created_by) # fallback if user missing
+    @booker_email = @user&.email || "Unknown User"
 
     mail(
-      to: [@admin_email, @user.email],
-      subject: "🛎️ New Booking Created by #{@user.email}"
+      to: ADMIN_EMAIL,
+      subject: "🛎️ New Booking Created by #{@booker_email}"
     )
   end
 
@@ -21,12 +24,14 @@ class BookingMailer < ApplicationMailer
   # =====================================
   def update_booking_notification
     @booking = params[:booking]
-    @user = @booking.user
-    @admin_email = "southcoastoutdoors25@gmail.com"
+    return if @booking.blank?
+
+    @user = @booking.user || @booking.try(:updated_by)
+    @booker_email = @user&.email || "Unknown User"
 
     mail(
-      to: [@admin_email, @user.email],
-      subject: "🔄 Booking Updated by #{@user.email}"
+      to: ADMIN_EMAIL,
+      subject: "🔄 Booking Updated by #{@booker_email}"
     )
   end
 
@@ -35,12 +40,14 @@ class BookingMailer < ApplicationMailer
   # =====================================
   def cancel_booking_notification
     @booking = params[:booking]
-    @user = @booking.user
-    @admin_email = "southcoastoutdoors25@gmail.com"
+    return if @booking.blank?
+
+    @user = @booking.user || @booking.try(:cancelled_by)
+    @booker_email = @user&.email || "Unknown User"
 
     mail(
-      to: [@admin_email, @user.email],
-      subject: "❌ Booking Cancelled by #{@user.email}"
+      to: ADMIN_EMAIL,
+      subject: "❌ Booking Cancelled by #{@booker_email}"
     )
   end
 end
