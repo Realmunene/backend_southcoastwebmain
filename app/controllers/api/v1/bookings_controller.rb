@@ -20,7 +20,7 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          # ✅ Send admin notification only
+          # ✅ Send admin notification only - FIXED: Using parameterized mailer correctly
           BookingMailer.with(booking: booking).new_booking_notification.deliver_later
           render json: booking, status: :created
         else

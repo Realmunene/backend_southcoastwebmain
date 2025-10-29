@@ -21,7 +21,7 @@ module Api
           booking = Booking.new(booking_params.merge(user_id: params[:user_id]))
 
           if booking.save
-            # ✅ Notify admin (self) when admin creates booking
+            # ✅ Notify admin (self) when admin creates booking - FIXED: Using parameterized mailer correctly
             BookingMailer.with(booking: booking).new_booking_notification.deliver_later
             render json: booking, status: :created
           else
@@ -32,7 +32,7 @@ module Api
         # PUT/PATCH /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            # ✅ Notify admin of booking updates
+            # ✅ Notify admin of booking updates - FIXED: Using parameterized mailer correctly
             BookingMailer.with(booking: @booking).update_booking_notification.deliver_later
             render json: @booking, status: :ok
           else
@@ -42,7 +42,7 @@ module Api
 
         # DELETE /api/v1/admin/bookings/:id
         def destroy
-          # ✅ Notify admin before deletion
+          # ✅ Notify admin before deletion - FIXED: Using parameterized mailer correctly
           BookingMailer.with(booking: @booking).cancel_booking_notification.deliver_later
           @booking.destroy
           head :no_content
