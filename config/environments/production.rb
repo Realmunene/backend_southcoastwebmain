@@ -33,7 +33,7 @@ Rails.application.configure do
   end
 
   # -----------------------------------------------
-  # ✅ Action Mailer — Resend API Configuration
+  # ✅ Action Mailer Configuration
   # -----------------------------------------------
   config.action_mailer.default_url_options = {
     host: ENV.fetch("APP_HOST", "backend-southcoastwebmain-1.onrender.com"),
@@ -42,11 +42,23 @@ Rails.application.configure do
 
   config.action_mailer.perform_caching = false
   config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.perform_deliveries = true
 
-  # ✅ Use Resend API via 'resend' gem (not SMTP)
+  # ✅ Primary: Use Resend API via 'resend' gem (not SMTP)
   config.action_mailer.delivery_method = :resend
   config.action_mailer.resend_settings = {
     api_key: ENV.fetch("RESEND_API_KEY")
+  }
+
+  # ✅ Fallback: Gmail SMTP Configuration (if Resend fails)
+  config.action_mailer.smtp_settings = {
+    address: 'smtp.gmail.com',
+    port: 587,
+    domain: 'southcoast.com',
+    user_name: ENV['GMAIL_USERNAME'],
+    password: ENV['GMAIL_PASSWORD'],
+    authentication: 'plain',
+    enable_starttls_auto: true
   }
 
   # ✅ Mailer logging
@@ -55,6 +67,15 @@ Rails.application.configure do
   config.action_mailer.logger = ActiveSupport::TaggedLogging.new(mail_logger)
 
   config.after_initialize do
-    Rails.logger.info "✅ Resend API mailer configured successfully."
+    if ENV['RESEND_API_KEY'].present?
+      Rails.logger.info "✅ Resend API mailer configured successfully."
+    elsif ENV['GMAIL_USERNAME'].present? && ENV['GMAIL_PASSWORD'].present?
+      Rails.logger.info "✅ Gmail SMTP mailer configured successfully (fallback)."
+      # Switch to SMTP if Resend is not available
+      config.action_mailer.delivery_method = :smtp
+    else
+      Rails.logger.warn "⚠️ No email configuration found. Emails will not be sent."
+      config.action_mailer.perform_deliveries = false
+    end
   end
 end
