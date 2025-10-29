@@ -17,10 +17,23 @@ module Api
           render json: @booking, status: :ok
         end
 
+        # POST /api/v1/admin/bookings
+        def create
+          booking = Booking.new(booking_params.merge(user_id: params[:user_id]))
+
+          if booking.save
+            # ✅ Notify admin (self) when admin manually creates a booking
+            BookingMailer.with(booking: booking).new_booking_notification.deliver_later
+            render json: booking, status: :created
+          else
+            render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
+          end
+        end
+
         # PUT/PATCH /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            # ✅ Optional: send update notification if desired
+            # ✅ Notify admin of booking updates
             BookingMailer.with(booking: @booking).update_booking_notification.deliver_later
             render json: @booking, status: :ok
           else
@@ -30,7 +43,7 @@ module Api
 
         # DELETE /api/v1/admin/bookings/:id
         def destroy
-          # ✅ Optional: send cancel notification before deleting
+          # ✅ Notify admin before deletion
           BookingMailer.with(booking: @booking).cancel_booking_notification.deliver_later
           @booking.destroy
           head :no_content
@@ -43,7 +56,7 @@ module Api
         end
 
         def booking_params
-          params.require(:booking).permit(:nationality, :room_type, :check_in, :check_out, :guests)
+          params.require(:booking).permit(:user_id, :nationality, :room_type, :check_in, :check_out, :guests)
         end
       end
     end
