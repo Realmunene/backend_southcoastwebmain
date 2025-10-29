@@ -20,8 +20,9 @@ module Api
         # PATCH/PUT /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            BookingMailer.update_booking_notification(@booking)
-            render json: @booking, status: :ok
+            # ✅ Notify update asynchronously
+            BookingMailer.with(booking: @booking).update_booking_notification.deliver_later
+            render json: { message: "Booking updated successfully", booking: @booking }, status: :ok
           else
             render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
           end
@@ -30,7 +31,8 @@ module Api
         # DELETE /api/v1/admin/bookings/:id
         def destroy
           @booking.destroy
-          BookingMailer.cancel_booking_notification(@booking)
+          # ✅ Notify cancellation asynchronously
+          BookingMailer.with(booking: @booking).cancel_booking_notification.deliver_later
           render json: { message: "Booking cancelled successfully" }, status: :ok
         end
 
@@ -38,6 +40,8 @@ module Api
 
         def set_booking
           @booking = Booking.find(params[:id])
+        rescue ActiveRecord::RecordNotFound
+          render json: { error: "Booking not found" }, status: :not_found
         end
 
         def booking_params

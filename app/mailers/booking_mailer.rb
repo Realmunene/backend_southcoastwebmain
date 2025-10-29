@@ -3,43 +3,43 @@ class BookingMailer < ApplicationMailer
   default from: "no-reply@southcoast.com"
 
   # =====================================
-  # New Booking Notification
+  # 🆕 New Booking Notification
   # =====================================
-  def new_booking_notification(booking)
-    @booking = booking
+  def new_booking_notification
+    @booking = params[:booking]
     @user = @booking.user
-    @admin_email = "superadmin@southcoast.com" # Replace with your admin email
+    @admin_email = "superadmin@southcoast.com"
 
     mail(
-      to: @admin_email,
+      to: [@admin_email, @user.email],
       subject: "🛎️ New Booking Created by #{@user.email}"
     )
   end
 
   # =====================================
-  # Booking Update Notification
+  # 🔄 Booking Update Notification
   # =====================================
-  def update_booking_notification(booking)
-    @booking = booking
+  def update_booking_notification
+    @booking = params[:booking]
     @user = @booking.user
     @admin_email = "superadmin@southcoast.com"
 
     mail(
-      to: @admin_email,
+      to: [@admin_email, @user.email],
       subject: "🔄 Booking Updated by #{@user.email}"
     )
   end
 
   # =====================================
-  # Booking Cancellation Notification
+  # ❌ Booking Cancellation Notification
   # =====================================
-  def cancel_booking_notification(booking)
-    @booking = booking
+  def cancel_booking_notification
+    @booking = params[:booking]
     @user = @booking.user
     @admin_email = "superadmin@southcoast.com"
 
     mail(
-      to: @admin_email,
+      to: [@admin_email, @user.email],
       subject: "❌ Booking Cancelled by #{@user.email}"
     )
   end
