@@ -22,7 +22,7 @@ module Api
 
         if booking.save
           # ✅ Send booking email (asynchronous)
-          BookingMailer.new_booking_notification(booking).deliver_later
+          BookingMailer.new_booking_notification(booking).deliver_now
 
           render json: { message: "Booking created successfully", booking: booking }, status: :created
         else
@@ -34,7 +34,7 @@ module Api
       def update
         if @booking.update(booking_params)
           # ✅ Notify update
-          BookingMailer.update_booking_notification(@booking).deliver_later
+          BookingMailer.update_booking_notification(@booking).deliver_now
 
           render json: { message: "Booking updated successfully", booking: @booking }, status: :ok
         else
@@ -46,7 +46,7 @@ module Api
       def destroy
         @booking.destroy
         # ✅ Notify cancellation
-        BookingMailer.cancel_booking_notification(@booking).deliver_later
+        BookingMailer.cancel_booking_notification(@booking).deliver_now
 
         render json: { message: "Booking cancelled successfully" }, status: :ok
       end
