@@ -1,11 +1,19 @@
 # app/mailers/booking_mailer.rb
+require "resend"
+
 class BookingMailer < ApplicationMailer
   default from: "onboarding@resend.dev"
 
-  # Initialize Resend client
-  RESEND_CLIENT = Resend::Client.new(api_key: ENV.fetch("RESEND_API_KEY") { "" })
+  # ✅ Initialize Resend client safely
+  api_key = ENV["RESEND_API_KEY"]
+  if api_key.nil? || !api_key.is_a?(String) || api_key.strip.empty?
+    Rails.logger.error("❌ Missing or invalid RESEND_API_KEY environment variable!")
+    raise "Invalid RESEND_API_KEY: Must be a non-empty string"
+  end
 
-  # New booking notification
+  RESEND_CLIENT = Resend::Client.new(api_key: api_key)
+
+  # ✅ New booking notification
   def new_booking_notification(booking)
     @booking = booking
     RESEND_CLIENT.emails.send(
@@ -14,9 +22,11 @@ class BookingMailer < ApplicationMailer
       subject: "✅ New Booking Received!",
       html: booking_html(@booking)
     )
+  rescue => e
+    Rails.logger.error("Failed to send new booking email: #{e.message}")
   end
 
-  # Update booking notification
+  # ✅ Update booking notification
   def update_booking_notification(booking)
     @booking = booking
     RESEND_CLIENT.emails.send(
@@ -25,9 +35,11 @@ class BookingMailer < ApplicationMailer
       subject: "✏️ Booking Updated!",
       html: booking_html(@booking)
     )
+  rescue => e
+    Rails.logger.error("Failed to send update booking email: #{e.message}")
   end
 
-  # Cancel booking notification
+  # ✅ Cancel booking notification
   def cancel_booking_notification(booking)
     @booking = booking
     RESEND_CLIENT.emails.send(
@@ -36,11 +48,13 @@ class BookingMailer < ApplicationMailer
       subject: "❌ Booking Cancelled!",
       html: booking_html(@booking)
     )
+  rescue => e
+    Rails.logger.error("Failed to send cancel booking email: #{e.message}")
   end
 
   private
 
-  # Common HTML template
+  # ✅ Shared HTML template for all emails
   def booking_html(booking)
     <<~HTML
       <!DOCTYPE html>
@@ -60,11 +74,11 @@ class BookingMailer < ApplicationMailer
             <h1>Booking Notification</h1>
             <p>Here are the booking details:</p>
             <ul>
-              <li>Nationality: #{booking.nationality}</li>
-              <li>Room Type: #{booking.room_type}</li>
-              <li>Check-in: #{booking.check_in}</li>
-              <li>Check-out: #{booking.check_out}</li>
-              <li>Guests: #{booking.guests}</li>
+              <li><strong>Nationality:</strong> #{booking.nationality}</li>
+              <li><strong>Room Type:</strong> #{booking.room_type}</li>
+              <li><strong>Check-in:</strong> #{booking.check_in}</li>
+              <li><strong>Check-out:</strong> #{booking.check_out}</li>
+              <li><strong>Guests:</strong> #{booking.guests}</li>
             </ul>
           </div>
         </body>
