@@ -21,8 +21,8 @@ module Api
           booking = Booking.new(booking_params.merge(user_id: params[:user_id]))
 
           if booking.save
-            # ✅ Notify admin (self) when admin creates booking - FIXED: Using parameterized mailer correctly
-            BookingMailer.with(booking: booking).new_booking_notification.deliver_later
+            # ✅ Notify admin (self) when admin creates booking - FIXED: Using direct parameter call
+            BookingMailer.new_booking_notification(booking).deliver_later
             render json: booking, status: :created
           else
             render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -32,8 +32,8 @@ module Api
         # PUT/PATCH /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            # ✅ Notify admin of booking updates - FIXED: Using parameterized mailer correctly
-            BookingMailer.with(booking: @booking).update_booking_notification.deliver_later
+            # ✅ Notify admin of booking updates - FIXED: Using direct parameter call
+            BookingMailer.update_booking_notification(@booking).deliver_later
             render json: @booking, status: :ok
           else
             render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
@@ -42,8 +42,8 @@ module Api
 
         # DELETE /api/v1/admin/bookings/:id
         def destroy
-          # ✅ Notify admin before deletion - FIXED: Using parameterized mailer correctly
-          BookingMailer.with(booking: @booking).cancel_booking_notification.deliver_later
+          # ✅ Notify admin before deletion - FIXED: Using direct parameter call
+          BookingMailer.cancel_booking_notification(@booking).deliver_later
           @booking.destroy
           head :no_content
         end
