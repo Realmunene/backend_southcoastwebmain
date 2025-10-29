@@ -1,10 +1,8 @@
-# app/controllers/api/v1/admin/bookings_controller.rb
 module Api
   module V1
     module Admin
       class BookingsController < ApplicationController
-        before_action :authenticate_user!          # Ensure user is logged in
-        before_action :authorize_admin!            # Ensure user has admin privileges
+        before_action :authorize_admin!
         before_action :set_booking, only: [:show, :update, :destroy]
 
         # GET /api/v1/admin/bookings
@@ -20,10 +18,17 @@ module Api
 
         # POST /api/v1/admin/bookings
         def create
-          booking = Booking.new(booking_params)
+          booking = Booking.new(booking_params.merge(user_id: params[:user_id]))
 
           if booking.save
-            Rails.logger.info "📧 Email notification disabled temporarily - Admin created Booking ##{booking.id}"
+            # ✅ Send admin notification immediately (sync)
+            begin
+              BookingMailer.new_booking_notification(booking).deliver_now
+              Rails.logger.info "📧 New booking email sent successfully for admin-created booking ##{booking.id}"
+            rescue => e
+              Rails.logger.error "📧 Failed to send booking email: #{e.message}"
+            end
+            
             render json: booking, status: :created
           else
             render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -33,7 +38,14 @@ module Api
         # PUT/PATCH /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            Rails.logger.info "📧 Email notification disabled temporarily - Booking ##{@booking.id} updated"
+            # ✅ Send update notification immediately (sync)
+            begin
+              BookingMailer.update_booking_notification(@booking).deliver_now
+              Rails.logger.info "📧 Booking update email sent successfully for booking ##{@booking.id}"
+            rescue => e
+              Rails.logger.error "📧 Failed to send update email: #{e.message}"
+            end
+            
             render json: @booking, status: :ok
           else
             render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
@@ -42,7 +54,14 @@ module Api
 
         # DELETE /api/v1/admin/bookings/:id
         def destroy
-          Rails.logger.info "📧 Email notification disabled temporarily - Booking ##{@booking.id} cancelled"
+          # ✅ Send cancellation notification immediately (sync)
+          begin
+            BookingMailer.cancel_booking_notification(@booking).deliver_now
+            Rails.logger.info "📧 Booking cancellation email sent successfully for booking ##{@booking.id}"
+          rescue => e
+            Rails.logger.error "📧 Failed to send cancellation email: #{e.message}"
+          end
+          
           @booking.destroy
           head :no_content
         end
@@ -55,13 +74,6 @@ module Api
 
         def booking_params
           params.require(:booking).permit(:user_id, :nationality, :room_type, :check_in, :check_out, :guests)
-        end
-
-        # ✅ Ensure only admins can access admin endpoints
-        def authorize_admin!
-          unless current_user&.admin?
-            render json: { error: "Forbidden — Admin access only" }, status: :forbidden
-          end
         end
       end
     end
