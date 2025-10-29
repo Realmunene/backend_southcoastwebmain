@@ -1,4 +1,3 @@
-# app/mailers/booking_mailer.rb
 class BookingMailer < ApplicationMailer
   default from: "no-reply@southcoast.com"
   ADMIN_EMAIL = "southcoastoutdoors25@gmail.com"
@@ -10,7 +9,7 @@ class BookingMailer < ApplicationMailer
     @booking = params[:booking]
     return if @booking.blank?
 
-    @user = @booking.user || @booking.try(:created_by) # fallback if user missing
+    @user = @booking.user || @booking.try(:created_by)
     @booker_email = @user&.email || "Unknown User"
 
     mail(

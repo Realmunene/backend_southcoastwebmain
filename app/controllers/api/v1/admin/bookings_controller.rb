@@ -1,4 +1,3 @@
-# app/controllers/api/v1/admin/bookings_controller.rb
 module Api
   module V1
     module Admin
@@ -22,7 +21,7 @@ module Api
           booking = Booking.new(booking_params.merge(user_id: params[:user_id]))
 
           if booking.save
-            # ✅ Notify admin (self) when admin manually creates a booking
+            # ✅ Notify admin (self) when admin creates booking
             BookingMailer.with(booking: booking).new_booking_notification.deliver_later
             render json: booking, status: :created
           else
