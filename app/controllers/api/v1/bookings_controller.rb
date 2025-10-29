@@ -20,8 +20,9 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          # ✅ Send admin notification only - FIXED: Using direct parameter call
-          BookingMailer.new_booking_notification(booking).deliver_later
+          # TODO: Re-enable email after fixing mail gem compatibility
+          # BookingMailer.new_booking_notification(booking).deliver_later
+          Rails.logger.info "📧 Email notification disabled temporarily - Booking ##{booking.id} created successfully"
           render json: booking, status: :created
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
