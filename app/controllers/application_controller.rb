@@ -3,16 +3,19 @@ class ApplicationController < ActionController::API
   before_action :set_default_format
 
   ##################################
-  # JWT ENCODING & DECODING
+  # 🔐 JWT ENCODING & DECODING (with refresh support)
   ##################################
-  def encode_token(payload, exp = 1.hour.from_now.to_i)
+  TOKEN_EXPIRY_HOURS = 12          # token valid for 12 hours
+  REFRESH_WINDOW_HOURS = 24        # allow refresh within 24 hours after expiry
+
+  def encode_token(payload, exp = TOKEN_EXPIRY_HOURS.hours.from_now.to_i)
     payload[:exp] = exp
-    payload[:role] ||= 'user' # ✅ Always set a default role
+    payload[:role] ||= 'user'
     JWT.encode(payload, secret_key, 'HS256')
   end
 
   def auth_header
-    # Expected: Authorization: Bearer <token>
+    # Expected header format: Authorization: Bearer <token>
     request.headers['Authorization']
   end
 
@@ -20,15 +23,34 @@ class ApplicationController < ActionController::API
     return nil unless auth_header
     token = auth_header.split(' ').last
     begin
-      decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256')
-      decoded.first # return payload hash
-    rescue JWT::DecodeError, JWT::ExpiredSignature
+      JWT.decode(token, secret_key, true, algorithm: 'HS256').first
+    rescue JWT::ExpiredSignature
+      decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256', verify_expiration: false).first
+      exp_time = Time.at(decoded['exp'])
+      return decoded if Time.now < exp_time + REFRESH_WINDOW_HOURS.hours
+      nil
+    rescue JWT::DecodeError
       nil
     end
   end
 
   ##################################
-  # ROLE HELPERS
+  # 🔁 AUTO TOKEN REFRESH
+  ##################################
+  def refresh_token_if_needed
+    decoded = decoded_token
+    return unless decoded
+
+    exp_time = Time.at(decoded['exp'])
+    # refresh token if it will expire in the next 30 minutes
+    if Time.now > exp_time - 30.minutes
+      new_token = encode_token(decoded.except('exp'))
+      response.set_header('Authorization', "Bearer #{new_token}")
+    end
+  end
+
+  ##################################
+  # 🧍 ROLE HELPERS
   ##################################
   def current_role
     decoded = decoded_token
@@ -40,7 +62,7 @@ class ApplicationController < ActionController::API
   end
 
   ##################################
-  # ADMIN AUTH
+  # 👑 ADMIN AUTH
   ##################################
   def current_admin
     return @current_admin if defined?(@current_admin)
@@ -54,23 +76,27 @@ class ApplicationController < ActionController::API
     !!current_admin
   end
 
-  def authorize_admin
+  def authorize_admin!
     unless logged_in_admin?
       render json: { error: 'Forbidden: Admin must be logged in.' }, status: :forbidden
+    else
+      refresh_token_if_needed
     end
   end
 
   ##################################
-  # SUPER ADMIN AUTH
+  # 🦸 SUPER ADMIN AUTH
   ##################################
-  def authorize_super_admin
+  def authorize_super_admin!
     unless current_admin&.role == 'super_admin'
       render json: { error: 'Forbidden: Only Super Admin can perform this action.' }, status: :forbidden
+    else
+      refresh_token_if_needed
     end
   end
 
   ##################################
-  # USER AUTH
+  # 👤 USER AUTH
   ##################################
   def current_user
     return @current_user if defined?(@current_user)
@@ -84,14 +110,16 @@ class ApplicationController < ActionController::API
     !!current_user
   end
 
-  def authorize_user
+  def authorize_user!
     unless logged_in_user?
       render json: { error: 'Unauthorized: Please log in as a user.' }, status: :unauthorized
+    else
+      refresh_token_if_needed
     end
   end
 
   ##################################
-  # PARTNER AUTH (optional future)
+  # 🤝 PARTNER AUTH (optional future)
   ##################################
   def current_partner
     return @current_partner if defined?(@current_partner)
@@ -105,14 +133,16 @@ class ApplicationController < ActionController::API
     !!current_partner
   end
 
-  def authorize_partner
+  def authorize_partner!
     unless logged_in_partner?
       render json: { error: 'Unauthorized: Please log in as partner.' }, status: :unauthorized
+    else
+      refresh_token_if_needed
     end
   end
 
   ##################################
-  # RESTRICT MULTIPLE ROLE SESSIONS
+  # 🚫 RESTRICT MULTIPLE ROLE SESSIONS
   ##################################
   def restrict_if_logged_in_different_role(required_role)
     decoded = decoded_token
@@ -131,7 +161,7 @@ class ApplicationController < ActionController::API
   end
 
   ##################################
-  # PRIVATE HELPERS
+  # ⚙️ PRIVATE HELPERS
   ##################################
   private
 

@@ -2,7 +2,7 @@
 module Api
   module V1
     class BookingsController < ApplicationController
-      before_action :authorize_user!
+      before_action :authorize_user!   # ✅ Only logged-in users can access bookings
       before_action :set_booking, only: [:show, :update, :destroy]
 
       # GET /api/v1/bookings
@@ -21,10 +21,10 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          # Send booking notification via Resend
-          BookingMailer.new_booking_notification(booking)
+          # ✅ Send booking email (asynchronous)
+          BookingMailer.new_booking_notification(booking).deliver_later
 
-          render json: booking, status: :created
+          render json: { message: "Booking created successfully", booking: booking }, status: :created
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
         end
@@ -33,10 +33,10 @@ module Api
       # PATCH/PUT /api/v1/bookings/:id
       def update
         if @booking.update(booking_params)
-          # Send booking update notification via Resend
-          BookingMailer.update_booking_notification(@booking)
+          # ✅ Notify update
+          BookingMailer.update_booking_notification(@booking).deliver_later
 
-          render json: @booking, status: :ok
+          render json: { message: "Booking updated successfully", booking: @booking }, status: :ok
         else
           render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
         end
@@ -45,8 +45,8 @@ module Api
       # DELETE /api/v1/bookings/:id
       def destroy
         @booking.destroy
-        # Send booking cancellation notification via Resend
-        BookingMailer.cancel_booking_notification(@booking)
+        # ✅ Notify cancellation
+        BookingMailer.cancel_booking_notification(@booking).deliver_later
 
         render json: { message: "Booking cancelled successfully" }, status: :ok
       end
@@ -54,7 +54,10 @@ module Api
       private
 
       def set_booking
-        @booking = current_user.bookings.find(params[:id])
+        @booking = current_user.bookings.find_by(id: params[:id])
+        unless @booking
+          render json: { error: "Booking not found or not accessible" }, status: :not_found
+        end
       end
 
       def booking_params
