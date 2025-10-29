@@ -1,6 +1,6 @@
 # app/mailers/booking_mailer.rb
 class BookingMailer < ApplicationMailer
-  default from: "no-reply@southcoast.com"
+  default from: "onboarding@resend.dev"
 
   # =====================================
   # 🆕 New Booking Notification
@@ -8,7 +8,7 @@ class BookingMailer < ApplicationMailer
   def new_booking_notification
     @booking = params[:booking]
     @user = @booking.user
-    @admin_email = "superadmin@southcoast.com"
+    @admin_email = "southcoastoutdoors25@gmail.com"
 
     mail(
       to: [@admin_email, @user.email],
@@ -22,7 +22,7 @@ class BookingMailer < ApplicationMailer
   def update_booking_notification
     @booking = params[:booking]
     @user = @booking.user
-    @admin_email = "superadmin@southcoast.com"
+    @admin_email = "southcoastoutdoors25@gmail.com"
 
     mail(
       to: [@admin_email, @user.email],
@@ -36,7 +36,7 @@ class BookingMailer < ApplicationMailer
   def cancel_booking_notification
     @booking = params[:booking]
     @user = @booking.user
-    @admin_email = "superadmin@southcoast.com"
+    @admin_email = "southcoastoutdoors25@gmail.com"
 
     mail(
       to: [@admin_email, @user.email],
