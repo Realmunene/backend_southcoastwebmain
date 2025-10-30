@@ -20,15 +20,8 @@ module Api
         booking = current_user.bookings.new(booking_params)
 
         if booking.save
-          # ✅ Send admin notification immediately (sync)
-          begin
-            BookingMailer.new_booking_notification(booking).deliver_now
-            Rails.logger.info "📧 New booking email sent successfully for booking ##{booking.id}"
-          rescue => e
-            Rails.logger.error "📧 Failed to send booking email: #{e.message}"
-            # Continue anyway - don't let email failure break booking creation
-          end
-          
+          # Send admin notification asynchronously
+          BookingMailer.with(booking: booking).new_booking_notification.deliver_later
           render json: booking, status: :created
         else
           render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
