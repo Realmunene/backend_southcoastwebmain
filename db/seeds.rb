@@ -22,7 +22,6 @@ room_options = [
   { name: "2-Connected Room, 1 Ensuite", price: 110 },
   { name: "2 Bedroom Apartment - Living + Kitchen + 2 Ensuite", price: 110 },
   { name: "3-BedRoom Apartment-Kitchen, 2 Ensuite", price: 125 },
-  { name: "ExecutiveRoom, Ensuite", price: 75 },
   { name: "2-Connected Room, I-Ensuite", price: 110 },
   { name: "2-BedRoom Apartment with Kitchen, 1-Ensuite", price: 125 },
   { name: "Larger Apartment with Kitchen, Balcony, Living, 2 Ensuites", price: 140 }
@@ -49,10 +48,6 @@ super_admins = [
   {
     email: "southcoastoutdoors25@gmail.com",
     name: "Super Admin (Main)"
-  },
-  {
-    email: "joseph.m.munene690@gmail.com",
-    name: "Super Admin (Joseph)"
   }
 ]
 
@@ -75,7 +70,7 @@ end
 if Admin.where(role: ADMIN).none?
   begin
     Admin.create!(
-      email: "admin@example.com",
+      email: "joseph.m.munene690@gmail.com",
       password: "Admin123!",
       password_confirmation: "Admin123!",
       name: "System Administrator",
