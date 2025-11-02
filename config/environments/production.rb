@@ -33,7 +33,7 @@ Rails.application.configure do
   end
 
   # -----------------------------------------------
-  # ✅ Action Mailer Configuration
+  # ✅ Action Mailer Configuration (Render + Gmail)
   # -----------------------------------------------
   config.action_mailer.default_url_options = {
     host: ENV.fetch("APP_HOST", "backend-southcoastwebmain-1.onrender.com"),
@@ -44,37 +44,29 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.perform_deliveries = true
 
-  # ✅ Primary: Use Resend API via 'resend' gem (not SMTP)
-  config.action_mailer.delivery_method = :resend
-  config.action_mailer.resend_settings = {
-    api_key: ENV.fetch("RESEND_API_KEY")
-  }
-
-  # ✅ Fallback: Gmail SMTP Configuration (if Resend fails)
+  # ✅ Use Gmail SMTP for all outgoing mail
+  config.action_mailer.delivery_method = :smtp
   config.action_mailer.smtp_settings = {
-    address: 'smtp.gmail.com',
-    port: 587,
-    domain: 'southcoast.com',
-    user_name: ENV['GMAIL_USERNAME'],
-    password: ENV['GMAIL_PASSWORD'],
-    authentication: 'plain',
+    address:              "smtp.gmail.com",
+    port:                 587,
+    domain:               "gmail.com",
+    user_name:            ENV["GMAIL_USERNAME"],
+    password:             ENV["GMAIL_PASSWORD"],
+    authentication:       "plain",
     enable_starttls_auto: true
   }
 
-  # ✅ Mailer logging
+  # ✅ Mailer logging (visible in Render logs)
   mail_logger = ActiveSupport::Logger.new(STDOUT)
   mail_logger.formatter = config.log_formatter
   config.action_mailer.logger = ActiveSupport::TaggedLogging.new(mail_logger)
 
+  # ✅ Verify mail configuration after boot
   config.after_initialize do
-    if ENV['RESEND_API_KEY'].present?
-      Rails.logger.info "✅ Resend API mailer configured successfully."
-    elsif ENV['GMAIL_USERNAME'].present? && ENV['GMAIL_PASSWORD'].present?
-      Rails.logger.info "✅ Gmail SMTP mailer configured successfully (fallback)."
-      # Switch to SMTP if Resend is not available
-      config.action_mailer.delivery_method = :smtp
+    if ENV["GMAIL_USERNAME"].present? && ENV["GMAIL_PASSWORD"].present?
+      Rails.logger.info "✅ Gmail SMTP mailer configured successfully."
     else
-      Rails.logger.warn "⚠️ No email configuration found. Emails will not be sent."
+      Rails.logger.warn "⚠️ Missing Gmail credentials — emails will not be sent."
       config.action_mailer.perform_deliveries = false
     end
   end
