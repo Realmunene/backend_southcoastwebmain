@@ -1,16 +1,12 @@
-# Be sure to restart your server when you modify this file.
-
-# Handle Cross-Origin Resource Sharing (CORS) to allow frontend apps to access the API.
-
+# config/initializers/cors.rb
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    # ✅ Allow local React app (for development) and deployed GitHub Pages (for production)
-    origins 'http://localhost:3000', 'https://realmunene.github.io'
+    origins 'http://localhost:3000', 'https://realmunene.github.io/southcoastwebmain/'
 
     resource '*',
       headers: :any,
       methods: [:get, :post, :put, :patch, :delete, :options, :head],
       expose: ['Authorization'],
-      credentials: false
+      credentials: true
   end
 end

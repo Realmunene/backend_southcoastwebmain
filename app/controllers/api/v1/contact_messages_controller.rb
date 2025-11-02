@@ -5,7 +5,7 @@ module Api
         @contact_message = ContactMessage.new(contact_message_params)
 
         if @contact_message.save
-          render json: { message: 'Message sent successfully' }, status: :created
+          render json: { message: "Message sent successfully" }, status: :created
         else
           render json: { errors: @contact_message.errors.full_messages }, status: :unprocessable_entity
         end

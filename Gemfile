@@ -1,61 +1,52 @@
 source "https://rubygems.org"
-ruby '3.4.7'
 
-# Core Rails
+ruby "3.4.7"
+
+# --- Core Rails ---
 gem "rails", "~> 8.0.3"
 
-# PostgreSQL database
+# --- Database & Server ---
 gem "pg", "~> 1.1"
-
-# Puma web server
 gem "puma", ">= 5.0"
 
-# Email sending (SendGrid + Resend)
+# --- Email / Mailers ---
+gem "mail", "~> 2.9.0"
+gem "actionmailer", "~> 8.0.3"
 gem "sendgrid-ruby"
 gem "resend"
 
-# Authentication
+# --- Authentication & Utilities ---
 gem "bcrypt", "~> 3.1.7"
 gem "jwt"
-
-# Countries helper
 gem "countries"
 
-# Allow CORS & rate limiting
-gem 'rack-cors'
-gem 'rack-attack'
-
-# Fix fiddle warning
+# --- Middleware & Performance ---
+gem "rack-cors", require: "rack/cors"
 # gem "fiddle"
-
-# Needed on Windows
-gem "tzinfo-data", platforms: %i[ windows jruby ]
-
-# Faster boots
 gem "bootsnap", require: false
-
-# Container deployments
-gem "kamal", require: false
-
-# Puma acceleration
 gem "thruster", require: false
 
-# ✅ ✅ Solid gems used ONLY in production (never on Windows dev)
+# --- Deployment ---
+gem "kamal", require: false
+
+# --- Platform helpers ---
+gem "tzinfo-data", platforms: %i[windows jruby]
+
+# --- Environment Variables ---
+gem "dotenv-rails", "~> 3.1"
+
+# --- Production-only gems ---
 group :production do
   gem "solid_cache"
 end
-group :development, :test do
-  gem 'dotenv-rails'
+
+# --- Development-only gems ---
+group :development do
+  gem "debug", "~> 1.9"
 end
 
-# Development / Test tools
+# --- Development & Test shared tools ---
 group :development, :test do
-  # Ruby debugger
-  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
-
-  # Security static analysis
   gem "brakeman", require: false
-
-  # Ruby/rails style linter
   gem "rubocop-rails-omakase", require: false
 end

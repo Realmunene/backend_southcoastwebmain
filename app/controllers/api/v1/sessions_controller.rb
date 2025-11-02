@@ -1,10 +1,11 @@
+# app/controllers/api/v1/sessions_controller.rb
 module Api
   module V1
     class SessionsController < ApplicationController
-      # ======================
-      # Admin Login
+      ##################################
+      # 👑 ADMIN LOGIN
       # POST /api/v1/admin/login
-      # ======================
+      ##################################
       def login_admin
         email = params.dig(:session, :email) || params[:email]
         password = params.dig(:session, :password) || params[:password]
@@ -23,19 +24,16 @@ module Api
         end
       end
 
-      # ======================
-      # Admin Profile
-      # GET /api/v1/admin/profile
-      # ======================
-      before_action :authorize_admin, only: [:admin_profile]
+      before_action :authorize_admin!, only: [:admin_profile]
+
       def admin_profile
         render json: { admin: current_admin }, status: :ok
       end
 
-      # ======================
-      # User Login
+      ##################################
+      # 👤 USER LOGIN
       # POST /api/v1/user/login
-      # ======================
+      ##################################
       def login_user
         email = params.dig(:session, :email) || params[:email]
         password = params.dig(:session, :password) || params[:password]
@@ -43,7 +41,7 @@ module Api
         user = User.find_by(email: email)
 
         if user&.authenticate(password)
-          token = encode_token({ user_id: user.id })
+          token = encode_token({ user_id: user.id, role: "user" })
           render json: {
             message: "User logged in successfully",
             user: user,
@@ -54,29 +52,31 @@ module Api
         end
       end
 
-      # ======================
-      # User Profile
-      # GET /api/v1/user/profile
-      # ======================
-      before_action :authorize_user, only: [:user_profile]
+      before_action :authorize_user!, only: [:user_profile]
+
       def user_profile
         render json: { user: current_user }, status: :ok
       end
 
-      # ======================
-      # Logout (for both User & Admin)
+      ##################################
+      # 🚪 LOGOUT (for both Admin & User)
       # DELETE /api/v1/logout
-      # ======================
+      ##################################
       def destroy
+        if auth_header
+          decoded = decoded_token
+          revoke_token(decoded) if decoded
+        end
+
         reset_session
-        render json: { message: "Logged out successfully" }, status: :ok
+        render json: { message: "Logged out successfully. Token revoked." }, status: :ok
       end
 
+      ##################################
+      # 🔒 SUPER ADMIN CHECK
+      ##################################
       private
 
-      # ======================
-      # Only allow super admins to create sub-admins
-      # ======================
       def authorize_super_admin
         unless current_admin && current_admin.role == "super_admin"
           render json: { error: "Forbidden: Only Super Admin can perform this action" }, status: :forbidden

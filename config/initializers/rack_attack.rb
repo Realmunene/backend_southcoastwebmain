@@ -1,22 +1,24 @@
-class Rack::Attack
-  # ✅ Allow all local traffic
-  safelist('allow-localhost') do |req|
-    req.ip == '127.0.0.1' || req.ip == '::1'
-  end
+# config/initializers/rack_attack.rb
+# Protect your API from abusive requests
 
-  # ✅ Throttle login attempts by IP (5 requests per minute)
-  throttle('limit logins', limit: 5, period: 60.seconds) do |req|
-    if req.path == '/api/login' && req.post?
-      req.ip
+if defined?(Rack::Attack)
+  class Rack::Attack
+    # ✅ Allow localhost and internal requests
+    safelist_ip("127.0.0.1")
+    safelist_ip("::1")
+
+    # ✅ Example throttle: limit IPs to 60 requests per minute
+    throttle("req/ip", limit: 60, period: 1.minute) do |req|
+      req.ip unless req.path.start_with?("/assets")
+    end
+
+    # ✅ Optionally block known bad actors
+    blocklist("block bad bots") do |req|
+      req.user_agent =~ /BadBot/i
     end
   end
 
-  # ✅ Updated: use throttled_responder instead of throttled_response
-  self.throttled_responder = lambda do |request|
-    [
-      429, # status
-      { 'Content-Type' => 'application/json' },
-      [ { error: 'Too many login attempts. Please try again later.' }.to_json ]
-    ]
-  end
+  Rails.application.config.middleware.use Rack::Attack
+else
+  Rails.logger.warn "⚠️ Rack::Attack not loaded — skipping rate limiting."
 end

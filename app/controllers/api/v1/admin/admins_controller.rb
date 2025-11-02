@@ -5,18 +5,21 @@ class Api::V1::Admin::AdminsController < ApplicationController
 
   # ✅ List all admins (excluding super_admin)
   def index
-    admins = Admin.where(role: "admin")
+    admins = Admin.where(role: 1) # 1 = admin
     render json: admins, status: :ok
   end
 
   # ✅ Create a new admin (super_admin only)
   def create
-    # Prevent creating another super_admin
-    if params[:admin][:role] == "super_admin"
+    # Prevent creation of another super admin
+    if params[:admin][:role].to_s == "0" || params[:admin][:role].to_s.downcase == "super_admin"
       return render json: { error: "You cannot create another super_admin." }, status: :forbidden
     end
 
-    admin = Admin.new(admin_params.merge(role: "admin"))
+    # ✅ Build new admin and force correct role before validation
+    admin = Admin.new(admin_params)
+    admin.role = 1 # force role to 'admin' before validation runs
+
     if admin.save
       render json: { message: "Admin created successfully.", admin: admin }, status: :created
     else
@@ -27,9 +30,7 @@ class Api::V1::Admin::AdminsController < ApplicationController
   # ✅ Update an existing admin (super_admin only)
   def update
     admin = Admin.find_by(id: params[:id])
-    if admin.nil?
-      return render json: { error: "Admin not found." }, status: :not_found
-    end
+    return render json: { error: "Admin not found." }, status: :not_found unless admin
 
     # Prevent updating the super_admin
     if admin.super_admin?
@@ -37,7 +38,7 @@ class Api::V1::Admin::AdminsController < ApplicationController
     end
 
     # Prevent role manipulation
-    if params[:admin] && params[:admin][:role]
+    if params[:admin]&.key?(:role)
       return render json: { error: "Role updates are not allowed." }, status: :forbidden
     end
 
@@ -51,9 +52,7 @@ class Api::V1::Admin::AdminsController < ApplicationController
   # ✅ Delete an admin (cannot delete super_admin)
   def destroy
     admin = Admin.find_by(id: params[:id])
-    if admin.nil?
-      return render json: { error: "Admin not found." }, status: :not_found
-    end
+    return render json: { error: "Admin not found." }, status: :not_found unless admin
 
     if admin.super_admin?
       return render json: { error: "Cannot delete super admin." }, status: :unprocessable_entity
@@ -69,7 +68,8 @@ class Api::V1::Admin::AdminsController < ApplicationController
   private
 
   def admin_params
-    params.require(:admin).permit(:name, :email, :password, :password_confirmation)
+    # Include :role only to avoid warning, but it's ignored since we override it
+    params.require(:admin).permit(:name, :email, :password, :password_confirmation, :role)
   end
 
   def authorize_admin

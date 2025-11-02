@@ -3,13 +3,14 @@ class ApplicationController < ActionController::API
   before_action :set_default_format
 
   ##################################
-  # 🔐 JWT ENCODING & DECODING (with refresh support)
+  # 🔐 JWT ENCODING & DECODING (with refresh + revocation support)
   ##################################
   TOKEN_EXPIRY_HOURS = 12          # token valid for 12 hours
   REFRESH_WINDOW_HOURS = 24        # allow refresh within 24 hours after expiry
 
   def encode_token(payload, exp = TOKEN_EXPIRY_HOURS.hours.from_now.to_i)
     payload[:exp] = exp
+    payload[:jti] ||= SecureRandom.uuid  # Unique identifier for revocation tracking
     payload[:role] ||= 'user'
     JWT.encode(payload, secret_key, 'HS256')
   end
@@ -22,12 +23,16 @@ class ApplicationController < ActionController::API
   def decoded_token
     return nil unless auth_header
     token = auth_header.split(' ').last
+
     begin
-      JWT.decode(token, secret_key, true, algorithm: 'HS256').first
+      decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256').first
+      return nil if token_revoked?(decoded) # 🚫 reject revoked tokens
+      decoded
     rescue JWT::ExpiredSignature
       decoded = JWT.decode(token, secret_key, true, algorithm: 'HS256', verify_expiration: false).first
       exp_time = Time.at(decoded['exp'])
-      return decoded if Time.now < exp_time + REFRESH_WINDOW_HOURS.hours
+      # Allow refresh only if token is within refresh window and not revoked
+      return decoded if Time.now < exp_time + REFRESH_WINDOW_HOURS.hours && !token_revoked?(decoded)
       nil
     rescue JWT::DecodeError
       nil
@@ -65,12 +70,12 @@ class ApplicationController < ActionController::API
   # 👑 ADMIN AUTH
   ##################################
   def current_admin
-    return @current_admin if defined?(@current_admin)
-    decoded = decoded_token
-    if decoded && decoded['admin_id'] && %w[admin super_admin].include?(decoded['role'])
-      @current_admin = Admin.find_by(id: decoded['admin_id'])
-    end
+  return @current_admin if defined?(@current_admin)
+  decoded = decoded_token
+  if decoded && decoded['admin_id'] # remove role check
+    @current_admin = Admin.find_by(id: decoded['admin_id'])
   end
+end
 
   def logged_in_admin?
     !!current_admin
@@ -161,6 +166,23 @@ class ApplicationController < ActionController::API
   end
 
   ##################################
+  # 🚫 TOKEN REVOCATION HELPERS
+  ##################################
+  def token_revoked?(decoded)
+    jti = decoded['jti']
+    RevokedToken.exists?(jti: jti)
+  end
+
+  def revoke_token(decoded)
+    RevokedToken.create!(
+      jti: decoded['jti'],
+      expires_at: Time.at(decoded['exp'])
+    )
+  rescue => e
+    Rails.logger.error("Token revocation failed: #{e.message}")
+  end
+
+  ##################################
   # ⚙️ PRIVATE HELPERS
   ##################################
   private
@@ -173,12 +195,7 @@ class ApplicationController < ActionController::API
     request.format = :json
   end
 
-  # ✅ ADD THIS METHOD TO FIX THE ERROR
   def authenticate_user!
-    # This method is called by before_action callbacks
-    # For admin endpoints, we'll let authorize_admin! handle it
-    # For user endpoints, we'll use authorize_user!
-    # This prevents the "undefined method 'authenticate_user!'" error
-    true # Allow the request to continue, specific authorization happens in authorize_* methods
+    true # Prevent undefined method errors, authorization handled elsewhere
   end
 end

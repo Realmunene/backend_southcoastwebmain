@@ -21,8 +21,7 @@ module Api
           booking = Booking.new(booking_params.merge(user_id: params[:user_id]))
 
           if booking.save
-            # Send admin notification asynchronously
-            BookingMailer.with(booking: booking).new_booking_notification.deliver_later
+            send_mail_with_logging(:new_booking_notification, booking)
             render json: booking, status: :created
           else
             render json: { errors: booking.errors.full_messages }, status: :unprocessable_entity
@@ -32,7 +31,7 @@ module Api
         # PUT/PATCH /api/v1/admin/bookings/:id
         def update
           if @booking.update(booking_params)
-            BookingMailer.with(booking: @booking).update_booking_notification.deliver_later
+            send_mail_with_logging(:update_booking_notification, @booking)
             render json: @booking, status: :ok
           else
             render json: { errors: @booking.errors.full_messages }, status: :unprocessable_entity
@@ -41,7 +40,7 @@ module Api
 
         # DELETE /api/v1/admin/bookings/:id
         def destroy
-          BookingMailer.with(booking: @booking).cancel_booking_notification.deliver_later
+          send_mail_with_logging(:cancel_booking_notification, @booking)
           @booking.destroy
           head :no_content
         end
@@ -54,6 +53,14 @@ module Api
 
         def booking_params
           params.require(:booking).permit(:user_id, :nationality, :room_type, :check_in, :check_out, :guests)
+        end
+
+        # Sends a mail asynchronously with logging
+        def send_mail_with_logging(mailer_method, booking)
+          BookingMailer.with(booking: booking).public_send(mailer_method).deliver_later
+          Rails.logger.info "BookingMailer##{mailer_method} enqueued for Booking ID=#{booking.id}"
+        rescue => e
+          Rails.logger.error "Failed to enqueue BookingMailer##{mailer_method} for Booking ID=#{booking.id}: #{e.message}"
         end
       end
     end
